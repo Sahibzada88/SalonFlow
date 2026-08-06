@@ -1,0 +1,169 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Search, Plus, User, Edit, Trash2 } from 'lucide-react'
+import { customersApi } from '@/services/api'
+
+export default function CustomersPage() {
+  const router = useRouter()
+  const [customers, setCustomers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    fetchCustomers()
+  }, [])
+
+  const fetchCustomers = async (searchTerm?: string) => {
+    try {
+      setLoading(true)
+      const response = await customersApi.getAll(searchTerm ? { search: searchTerm } : {})
+      setCustomers(response.data)
+    } catch (error) {
+      console.error('Failed to fetch customers:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchCustomers(search)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this customer?')) return
+    
+    try {
+      await customersApi.delete(id)
+      fetchCustomers(search)
+    } catch (error) {
+      alert('Failed to delete customer')
+    }
+  }
+
+  return (
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
+          <p className="text-gray-600">Manage your salon customers</p>
+        </div>
+        <Link href="/dashboard/customers/new">
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Customer
+          </Button>
+        </Link>
+      </div>
+
+      {/* Search */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <form onSubmit={handleSearch} className="flex gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Button type="submit" variant="outline">
+              <Search className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+            {search && (
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setSearch('')
+                  fetchCustomers()
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Customer Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Visits</TableHead>
+                <TableHead>Total Spent</TableHead>
+                <TableHead>Last Visit</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    Loading customers...
+                  </TableCell>
+                </TableRow>
+              ) : customers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    No customers found. Add your first customer!
+                  </TableCell>
+                </TableRow>
+              ) : (
+                customers.map((customer: any) => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-medium">{customer.full_name}</TableCell>
+                    <TableCell>{customer.email || '-'}</TableCell>
+                    <TableCell>{customer.phone || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{customer.total_visits || 0}</Badge>
+                    </TableCell>
+                    <TableCell>Rs. {customer.total_spent?.toLocaleString() || 0}</TableCell>
+                    <TableCell>
+                      {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString() : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Link href={`/dashboard/customers/${customer.id}`}>
+                          <Button variant="ghost" size="sm">
+                            <User className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Link href={`/dashboard/customers/${customer.id}/edit`}>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDelete(customer.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

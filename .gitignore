@@ -1,0 +1,223 @@
+# ====================
+# Python (Backend)
+# ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+*.egg
+dist/
+build/
+*.log
+*.pid
+*.seed
+*.pid.lock
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+*.db
+*.sqlite
+*.sqlite3
+
+# ====================
+# Node.js (Frontend)
+# ====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+.next/
+out/
+dist/
+.nuxt/
+.cache/
+.parcel-cache/
+*.tsbuildinfo
+
+# ====================
+# Environment Variables
+# ====================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.env.local
+*.env.*.local
+
+# ====================
+# IDE / Editor
+# ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+Desktop.ini
+
+# ====================
+# OS Files
+# ====================
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+*.cache
+
+# ====================
+# Logs
+# ====================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ====================
+# Build Outputs
+# ====================
+/build/
+/dist/
+/.next/
+/out/
+/.vercel/
+/.fly/
+*.pyc
+*.pyo
+*.pyd
+
+# ====================
+# Database
+# ====================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ====================
+# Misc
+# ====================
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.der
+*.cer
+
+# ====================
+# Project Specific
+# ====================
+# Supabase
+supabase/.temp/
+supabase/seed.sql
+
+# Alembic (database migrations)
+alembic/versions/*.pyc
+alembic/versions/*.pyo
+
+# PDF exports
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Reports
+coverage/
+.nyc_output/
+
+# Debug files
+*.pdb
+*.dmp
+*.heapdump
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ====================
+# Security
+# ====================
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+*.der
+*.cer
+*.secret
+*.secrets
+
+# ====================
+# Terraform / Infrastructure
+# ====================
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfvars
+*.plan
+*.backup
+
+# ====================
+# Docker
+# ====================
+*.dockerignore
+Dockerfile.*
+docker-compose.*.yml
+.docker/
+.dockerignore
+
+# ====================
+# CI/CD
+# ====================
+.github/workflows/*.yml
+.gitlab-ci.yml
+.travis.yml
+circle.yml
+azure-pipelines.yml
+
+# ====================
+# Vercel
+# ====================
+.vercel
+vercel.json
+
+# ====================
+# Render
+# ====================
+.render
+render.yaml
