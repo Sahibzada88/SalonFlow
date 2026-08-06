@@ -36,5 +36,9 @@ async def root():
 async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
 
+# Add this at the very bottom
+import os
+from mangum import Mangum
 
-app = app 
+# Handler for Vercel serverless
+handler = Mangum(app)
