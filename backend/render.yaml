@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: salonflow-backend
+    runtime: python
+    repo: https://github.com/Sahibzada88/SalonFlow
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false

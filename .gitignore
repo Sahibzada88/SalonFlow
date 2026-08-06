@@ -209,15 +209,3 @@ docker-compose.*.yml
 .travis.yml
 circle.yml
 azure-pipelines.yml
-
-# ====================
-# Vercel
-# ====================
-.vercel
-vercel.json
-
-# ====================
-# Render
-# ====================
-.render
-render.yaml
