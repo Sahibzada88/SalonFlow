@@ -35,3 +35,6 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
+
+
+app = app 
