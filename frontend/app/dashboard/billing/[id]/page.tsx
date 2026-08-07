@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { 
   ArrowLeft, 
   Trash2,
@@ -22,6 +25,10 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const router = useRouter()
   const [invoice, setInvoice] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [submittingPayment, setSubmittingPayment] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -76,10 +83,38 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     }
   }
 
+  const handleRecordPayment = async () => {
+    if (!paymentAmount || parseInt(paymentAmount) <= 0) {
+      alert('Please enter a valid amount')
+      return
+    }
+    const amount = parseInt(paymentAmount)
+    if (amount > invoice.balance_due) {
+      alert(`Amount cannot exceed balance due: Rs. ${invoice.balance_due}`)
+      return
+    }
+    setSubmittingPayment(true)
+    try {
+      await billingApi.addPayment(params.id, {
+        amount: amount,
+        payment_method: paymentMethod,
+        payment_date: new Date().toISOString().split('T')[0]
+      })
+      setPaymentDialogOpen(false)
+      setPaymentAmount('')
+      fetchInvoice()
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to record payment')
+    } finally {
+      setSubmittingPayment(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
+      partially_paid: 'bg-blue-100 text-blue-800',
       cancelled: 'bg-red-100 text-red-800',
     }
     return variants[status] || variants.pending
@@ -106,8 +141,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           <h1 className="text-3xl font-bold text-gray-900">
             Invoice #{invoice.invoice_number}
           </h1>
-          <Badge className={getStatusBadge(invoice.status)}>
-            {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+          <Badge className={getStatusBadge(invoice.payment_status || invoice.status)}>
+            {(invoice.payment_status || invoice.status).charAt(0).toUpperCase() + 
+             (invoice.payment_status || invoice.status).slice(1).replace('_', ' ')}
           </Badge>
         </div>
         <div className="flex gap-2">
@@ -127,7 +163,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
       </div>
 
       {/* Invoice Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -153,11 +189,22 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <DollarSign className="h-5 w-5 text-blue-600" />
+              <DollarSign className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-gray-500">Total</p>
-                <p className="font-medium text-xl text-blue-600">
-                  Rs. {invoice.total.toLocaleString()}
+                <p className="text-sm text-gray-500">Amount Paid</p>
+                <p className="font-medium text-green-600">Rs. {invoice.amount_paid?.toLocaleString() || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm text-gray-500">Balance Due</p>
+                <p className={`font-medium ${invoice.balance_due > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  Rs. {invoice.balance_due?.toLocaleString() || 0}
                 </p>
               </div>
             </div>
@@ -228,6 +275,85 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           </div>
         </CardContent>
       </Card>
+
+      {/* Record Payment Button */}
+      {invoice.balance_due > 0 && (
+        <div className="mt-6 flex justify-end">
+          <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                Record Payment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Record Payment</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label>Amount (Rs.)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    min="1"
+                    max={invoice.balance_due}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Max: Rs. {invoice.balance_due}</p>
+                </div>
+                <div>
+                  <Label>Payment Method</Label>
+                  <select
+                    className="w-full px-3 py-2 border rounded-md"
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="bank">Bank Transfer</option>
+                    <option value="online">Online</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700" 
+                  onClick={handleRecordPayment}
+                  disabled={submittingPayment}
+                >
+                  {submittingPayment ? 'Recording...' : 'Record Payment'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
+      {/* Payment History */}
+      {invoice.payments && invoice.payments.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Payment History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {invoice.payments.map((p: any) => (
+                <div key={p.id} className="flex justify-between items-center border-b pb-2 last:border-0">
+                  <div>
+                    <p className="font-medium">Rs. {p.amount.toLocaleString()}</p>
+                    <p className="text-sm text-gray-500">{p.payment_method} - {p.payment_date}</p>
+                  </div>
+                  {p.notes && <p className="text-sm text-gray-400">{p.notes}</p>}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -232,6 +232,43 @@ async def get_invoice(
             .eq("invoice_id", invoice_id)\
             .execute()
         invoice["items"] = items_response.data if items_response.data else []
+
+
+        # Get payments
+        payments_response = supabase_client.table("payments")\
+            .select("*")\
+            .eq("invoice_id", invoice_id)\
+            .order("payment_date", desc=True)\
+            .execute()
+        
+        invoice["payments"] = payments_response.data if payments_response.data else []
+        
+        total_paid = sum(p.get("amount", 0) for p in invoice["payments"])
+        balance_due = invoice.get("total", 0) - total_paid
+        
+        invoice["amount_paid"] = total_paid
+        invoice["balance_due"] = balance_due
+        
+        # Determine payment status
+        if balance_due <= 0:
+            invoice["payment_status"] = "paid"
+        elif total_paid > 0:
+            invoice["payment_status"] = "partially_paid"
+        else:
+            invoice["payment_status"] = "pending"
+
+        supabase_client.table("invoices")\
+            .update({
+                "amount_paid": total_paid,
+                "balance_due": balance_due,
+                "payment_status": invoice["payment_status"],
+                "status": invoice["payment_status"]
+            })\
+            .eq("id", invoice_id)\
+            .execute()
+
+        
+
         
         return invoice
         
@@ -475,4 +512,117 @@ async def print_invoice_pdf(
         raise
     except Exception as e:
         print(f"Print PDF error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ===== Payment Schemas =====
+class PaymentCreate(BaseModel):
+    amount: int
+    payment_date: Optional[str] = None  # YYYY-MM-DD
+    payment_method: str = "cash"
+    reference: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentResponse(BaseModel):
+    id: str
+    invoice_id: str
+    amount: int
+    payment_date: str
+    payment_method: str
+    reference: Optional[str]
+    notes: Optional[str]
+    created_at: str
+
+# ===== Payment Endpoints =====
+
+@router.post("/invoices/{invoice_id}/payments", response_model=PaymentResponse)
+async def add_payment(
+    invoice_id: str,
+    payment_data: PaymentCreate,
+    token: str = Depends(oauth2_scheme)
+):
+    """Record a payment against an invoice"""
+    try:
+        user = supabase_client.auth.get_user(token)
+        if user.user is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        salon_id = await get_salon_id(user.user.id)
+        if not salon_id:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        # Check invoice exists
+        invoice_check = supabase_client.table("invoices")\
+            .select("*")\
+            .eq("id", invoice_id)\
+            .eq("salon_id", salon_id)\
+            .execute()
+        
+        if not invoice_check.data:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        invoice = invoice_check.data[0]
+        
+        # Ensure payment amount is not more than balance
+        balance = invoice.get("total", 0) - invoice.get("amount_paid", 0)
+        if payment_data.amount > balance:
+            raise HTTPException(status_code=400, detail=f"Payment amount cannot exceed balance due (Rs. {balance})")
+        
+        # Create payment
+        payment_dict = payment_data.dict()
+        payment_dict["invoice_id"] = invoice_id
+        if not payment_dict.get("payment_date"):
+            payment_dict["payment_date"] = date.today().isoformat()
+        
+        response = supabase_client.table("payments").insert(payment_dict).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=400, detail="Failed to record payment")
+        
+        return response.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Payment error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/invoices/{invoice_id}/payments")
+async def get_invoice_payments(
+    invoice_id: str,
+    token: str = Depends(oauth2_scheme)
+):
+    """Get all payments for an invoice"""
+    try:
+        user = supabase_client.auth.get_user(token)
+        if user.user is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        salon_id = await get_salon_id(user.user.id)
+        if not salon_id:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        # Verify invoice belongs to salon
+        invoice_check = supabase_client.table("invoices")\
+            .select("id")\
+            .eq("id", invoice_id)\
+            .eq("salon_id", salon_id)\
+            .execute()
+        
+        if not invoice_check.data:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        # Get payments
+        response = supabase_client.table("payments")\
+            .select("*")\
+            .eq("invoice_id", invoice_id)\
+            .order("payment_date", desc=True)\
+            .execute()
+        
+        return response.data if response.data else []
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get payments error: {e}")
         raise HTTPException(status_code=400, detail=str(e))

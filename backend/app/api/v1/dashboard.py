@@ -33,6 +33,43 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
         today = date.today().isoformat()
         yesterday = (date.today() - timedelta(days=1)).isoformat()
         
+        # ===== REVENUE CALCULATION =====
+        # Get today's revenue (from paid invoices)
+        today_revenue = 0
+        try:
+            today_invoices = supabase_client.table("invoices")\
+                .select("total")\
+                .eq("salon_id", salon_id)\
+                .eq("date", today)\
+                .eq("status", "paid")\
+                .execute()
+            
+            if today_invoices.data:
+                today_revenue = sum(inv.get("total", 0) for inv in today_invoices.data)
+        except Exception as e:
+            print(f"Error getting today revenue: {e}")
+        
+        # Get yesterday's revenue (for growth calculation)
+        yesterday_revenue = 0
+        try:
+            yesterday_invoices = supabase_client.table("invoices")\
+                .select("total")\
+                .eq("salon_id", salon_id)\
+                .eq("date", yesterday)\
+                .eq("status", "paid")\
+                .execute()
+            
+            if yesterday_invoices.data:
+                yesterday_revenue = sum(inv.get("total", 0) for inv in yesterday_invoices.data)
+        except Exception as e:
+            print(f"Error getting yesterday revenue: {e}")
+        
+        # Calculate revenue growth
+        if yesterday_revenue == 0:
+            revenue_growth = 100 if today_revenue > 0 else 0
+        else:
+            revenue_growth = int(((today_revenue - yesterday_revenue) / yesterday_revenue) * 100)
+        
         # Get today's appointments
         today_result = supabase_client.table("appointments")\
             .select("*", count="exact")\
@@ -49,11 +86,11 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
             .execute()
         yesterday_count = yesterday_result.count if yesterday_result.count is not None else 0
         
-        # Calculate growth (safe)
+        # Calculate appointment growth
         if yesterday_count == 0:
-            growth = 100 if today_count > 0 else 0
+            appointment_growth = 100 if today_count > 0 else 0
         else:
-            growth = int(((today_count - yesterday_count) / yesterday_count) * 100)
+            appointment_growth = int(((today_count - yesterday_count) / yesterday_count) * 100)
         
         # Get total customers
         customers_result = supabase_client.table("customers")\
@@ -85,7 +122,7 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
             .execute()
         upcoming_count = upcoming_result.count if upcoming_result.count is not None else 0
         
-        # Get next appointment - FORMATTED AS STRING
+        # Get next appointment
         next_appointment = None
         try:
             next_result = supabase_client.table("appointments")\
@@ -102,21 +139,16 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
                 apt = next_result.data[0]
                 apt_date = apt.get('date', '')
                 apt_time = apt.get('start_time', '')
-                # Format time to HH:MM
                 if apt_time and len(apt_time) > 5:
                     apt_time = apt_time[:5]
-                # Create formatted string
                 if apt_date and apt_time:
                     next_appointment = f"{apt_date} at {apt_time}"
                 elif apt_date:
                     next_appointment = apt_date
-                else:
-                    next_appointment = "Upcoming"
-        except Exception as e:
-            print(f"Error getting next appointment: {e}")
+        except:
             next_appointment = None
         
-        # Get recent appointments (last 5)
+        # Get recent appointments
         recent_result = supabase_client.table("appointments")\
             .select("*, customers(full_name)")\
             .eq("salon_id", salon_id)\
@@ -154,14 +186,14 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
                 "phone": salon.get("phone", "")
             },
             "stats": {
-                "today_revenue": 0,
+                "today_revenue": today_revenue,
                 "today_appointments": today_count,
                 "total_customers": total_customers,
                 "upcoming_appointments": upcoming_count,
-                "revenue_growth": 0,
-                "appointment_growth": growth,
+                "revenue_growth": revenue_growth,
+                "appointment_growth": appointment_growth,
                 "customer_growth": customer_growth,
-                "next_appointment": next_appointment  # Now this is a string, not an object
+                "next_appointment": next_appointment
             },
             "recent_appointments": recent_appointments
         }

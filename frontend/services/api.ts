@@ -126,4 +126,13 @@ export const billingApi = {
   printPDF: (id: string) => 
     api.get(`/billing/invoices/${id}/print`, { responseType: 'blob' }),
 
+
+    // Add payment to invoice
+  addPayment: (invoiceId: string, data: { amount: number; payment_method: string; payment_date?: string; notes?: string }) =>
+    api.post(`/billing/invoices/${invoiceId}/payments`, data),
+
+  // Get payments for an invoice
+  getPayments: (invoiceId: string) =>
+    api.get(`/billing/invoices/${invoiceId}/payments`),
+
 }

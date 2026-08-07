@@ -5,7 +5,7 @@ from datetime import date, time, datetime
 from app.core.supabase_client import supabase_client
 from app.api.v1.auth import oauth2_scheme
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 # ========== Pydantic Schemas ==========
 

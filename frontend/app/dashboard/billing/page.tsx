@@ -95,6 +95,7 @@ export default function BillingPage() {
     const variants: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
+      partially_paid: 'bg-blue-100 text-blue-800',
       cancelled: 'bg-red-100 text-red-800',
     }
     return variants[status] || variants.pending
@@ -201,8 +202,8 @@ export default function BillingPage() {
                     <TableCell>{inv.date}</TableCell>
                     <TableCell>Rs. {inv.total.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusBadge(inv.status)}>
-                        {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+                      <Badge className={getStatusBadge(inv.payment_status || inv.status)}>
+                        {(inv.payment_status || inv.status).charAt(0).toUpperCase() + (inv.payment_status || inv.status).slice(1).replace('_', ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
