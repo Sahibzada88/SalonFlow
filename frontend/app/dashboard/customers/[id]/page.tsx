@@ -9,30 +9,24 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Mail, Phone, MapPin, Edit, Calendar, DollarSign } from 'lucide-react'
 import { customersApi } from '@/services/api'
 
-// Import this to get params correctly
-interface PageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function CustomerDetailPage({ params }: PageProps) {
+// Important: This is how params should be received in Next.js App Router
+export default function CustomerDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const customerId = params.id
   const [customer, setCustomer] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (customerId) {
+    if (params?.id) {
       fetchCustomer()
     }
-  }, [customerId])
+  }, [params?.id])
 
   const fetchCustomer = async () => {
     try {
-      const response = await customersApi.getOne(customerId)
+      const response = await customersApi.getOne(params.id)
       setCustomer(response.data)
     } catch (error) {
+      console.error('Error fetching customer:', error)
       router.push('/dashboard/customers')
     } finally {
       setLoading(false)
@@ -41,22 +35,25 @@ export default function CustomerDetailPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="p-8 flex justify-center">
-        <p>Loading customer...</p>
+      <div className="flex justify-center py-8">
+        <p className="text-gray-500">Loading customer...</p>
       </div>
     )
   }
 
   if (!customer) {
     return (
-      <div className="p-8 text-center">
+      <div className="text-center py-8">
         <p className="text-gray-500">Customer not found</p>
+        <Link href="/dashboard/customers">
+          <Button variant="outline" className="mt-4">Go Back</Button>
+        </Link>
       </div>
     )
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <Link href="/dashboard/customers">
           <Button variant="ghost" size="sm">

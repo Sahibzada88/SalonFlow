@@ -45,6 +45,27 @@ class InvoiceResponse(BaseModel):
 
 # ========== Helper Functions ==========
 
+# Add this helper function at the top
+async def get_salon_id_from_token(token: str):
+    try:
+        user = supabase_client.auth.get_user(token)
+        if user.user is None:
+            return None
+        
+        salon_response = supabase_client.table("salons")\
+            .select("id")\
+            .eq("owner_id", user.user.id)\
+            .execute()
+        
+        if not salon_response.data:
+            return None
+        
+        return salon_response.data[0]["id"]
+    except:
+        return None
+
+
+
 async def get_salon_id(user_id: str):
     response = supabase_client.table("salons")\
         .select("id")\
@@ -70,21 +91,39 @@ async def generate_invoice_number(salon_id: str):
 # ========== CRUD Endpoints ==========
 
 @router.post("/invoices")
-async def create_invoice(
-    invoice_data: InvoiceCreate,
-    token: str = Depends(oauth2_scheme)
-):
-    """Create a new invoice"""
+async def create_invoice(invoice_data: InvoiceCreate, token: str = Depends(oauth2_scheme)):
     try:
-        # Get user
         user = supabase_client.auth.get_user(token)
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        # Get salon ID
         salon_id = await get_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=400, detail="No salon found")
+        
+        # ===== VALIDATION 1: Customer must exist =====
+        customer_check = supabase_client.table("customers")\
+            .select("id")\
+            .eq("id", invoice_data.customer_id)\
+            .eq("salon_id", salon_id)\
+            .execute()
+        
+        if not customer_check.data:
+            raise HTTPException(status_code=400, detail="Customer not found in your salon")
+        
+        # ===== VALIDATION 2: If appointment is linked, it must exist and belong to the customer =====
+        if invoice_data.appointment_id:
+            appointment_check = supabase_client.table("appointments")\
+                .select("id, customer_id")\
+                .eq("id", invoice_data.appointment_id)\
+                .eq("salon_id", salon_id)\
+                .execute()
+            
+            if not appointment_check.data:
+                raise HTTPException(status_code=400, detail="Appointment not found")
+            
+            if appointment_check.data[0]["customer_id"] != invoice_data.customer_id:
+                raise HTTPException(status_code=400, detail="Appointment does not belong to this customer")
         
         # Generate invoice number
         invoice_number = await generate_invoice_number(salon_id)
@@ -102,7 +141,10 @@ async def create_invoice(
             "total": invoice_data.total,
             "status": invoice_data.status,
             "payment_method": invoice_data.payment_method,
-            "notes": invoice_data.notes
+            "notes": invoice_data.notes,
+            "amount_paid": 0,
+            "balance_due": invoice_data.total,
+            "payment_status": "pending"
         }
         
         response = supabase_client.table("invoices").insert(invoice_dict).execute()

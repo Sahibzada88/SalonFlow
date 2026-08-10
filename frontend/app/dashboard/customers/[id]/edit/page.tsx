@@ -12,16 +12,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { customersApi } from '@/services/api'
 
-interface PageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function EditCustomerPage({ params }: PageProps) {
+// Important: This is how params should be received in Next.js App Router
+export default function EditCustomerPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const customerId = params.id
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     full_name: '',
@@ -32,14 +27,14 @@ export default function EditCustomerPage({ params }: PageProps) {
   })
 
   useEffect(() => {
-    if (customerId) {
+    if (params?.id) {
       fetchCustomer()
     }
-  }, [customerId])
+  }, [params?.id])
 
   const fetchCustomer = async () => {
     try {
-      const response = await customersApi.getOne(customerId)
+      const response = await customersApi.getOne(params.id)
       const data = response.data
       setFormData({
         full_name: data.full_name || '',
@@ -49,7 +44,10 @@ export default function EditCustomerPage({ params }: PageProps) {
         notes: data.notes || ''
       })
     } catch (error) {
+      console.error('Error fetching customer:', error)
       router.push('/dashboard/customers')
+    } finally {
+      setFetching(false)
     }
   }
 
@@ -59,8 +57,8 @@ export default function EditCustomerPage({ params }: PageProps) {
     setError('')
 
     try {
-      await customersApi.update(customerId, formData)
-      router.push(`/dashboard/customers/${customerId}`)
+      await customersApi.update(params.id, formData)
+      router.push(`/dashboard/customers/${params.id}`)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update customer')
     } finally {
@@ -68,10 +66,18 @@ export default function EditCustomerPage({ params }: PageProps) {
     }
   }
 
+  if (fetching) {
+    return (
+      <div className="flex justify-center py-8">
+        <p className="text-gray-500">Loading customer...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-8 max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
-        <Link href={`/dashboard/customers/${customerId}`}>
+        <Link href={`/dashboard/customers/${params.id}`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -150,7 +156,7 @@ export default function EditCustomerPage({ params }: PageProps) {
               >
                 {loading ? 'Updating...' : 'Update Customer'}
               </Button>
-              <Link href={`/dashboard/customers/${customerId}`}>
+              <Link href={`/dashboard/customers/${params.id}`}>
                 <Button variant="outline">Cancel</Button>
               </Link>
             </div>
