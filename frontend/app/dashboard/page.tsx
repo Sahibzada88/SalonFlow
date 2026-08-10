@@ -27,6 +27,7 @@ export default function DashboardPage() {
     upcomingAppointments: 0,
     appointmentGrowth: 0,
     customerGrowth: 0,
+    revenueGrowth: 0,
     nextAppointment: null as string | null
   })
 
@@ -52,6 +53,7 @@ export default function DashboardPage() {
           upcomingAppointments: data.stats?.upcoming_appointments ?? 0,
           appointmentGrowth: data.stats?.appointment_growth ?? 0,
           customerGrowth: data.stats?.customer_growth ?? 0,
+          revenueGrowth: data.stats?.revenue_growth ?? 0,
           nextAppointment: data.stats?.next_appointment ?? null
         })
         setRecentAppointments(data.recent_appointments || [])
@@ -115,16 +117,19 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Today's Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Rs. {stats.todayRevenue.toLocaleString()}</div>
-            <p className="text-sm text-gray-500 mt-1">Coming soon from billing</p>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+          <DollarSign className="h-4 w-4 text-green-600" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">Rs. {stats.todayRevenue.toLocaleString()}</div>
+          <p className={`text-sm mt-1 ${getGrowthColor(stats.revenueGrowth)}`}>
+            {getGrowthIcon(stats.revenueGrowth)} {formatGrowth(stats.revenueGrowth)} from yesterday
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">Total from all paid invoices</p>
+        </CardContent>
+      </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">

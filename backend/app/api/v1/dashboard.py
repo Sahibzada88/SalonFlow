@@ -32,9 +32,25 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
         # Today's date
         today = date.today().isoformat()
         yesterday = (date.today() - timedelta(days=1)).isoformat()
+        this_month = date.today().replace(day=1).isoformat()
         
         # ===== REVENUE CALCULATION =====
-        # Get today's revenue (from paid invoices)
+        
+        # 1. Total Revenue (All time - for the card)
+        total_revenue = 0
+        try:
+            total_invoices = supabase_client.table("invoices")\
+                .select("total")\
+                .eq("salon_id", salon_id)\
+                .eq("status", "paid")\
+                .execute()
+            
+            if total_invoices.data:
+                total_revenue = sum(inv.get("total", 0) for inv in total_invoices.data)
+        except Exception as e:
+            print(f"Error getting total revenue: {e}")
+        
+        # 2. Today's revenue (for growth calculation)
         today_revenue = 0
         try:
             today_invoices = supabase_client.table("invoices")\
@@ -49,7 +65,7 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
         except Exception as e:
             print(f"Error getting today revenue: {e}")
         
-        # Get yesterday's revenue (for growth calculation)
+        # 3. Yesterday's revenue (for growth)
         yesterday_revenue = 0
         try:
             yesterday_invoices = supabase_client.table("invoices")\
@@ -64,11 +80,28 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
         except Exception as e:
             print(f"Error getting yesterday revenue: {e}")
         
+        # 4. This month's revenue (for comparison)
+        month_revenue = 0
+        try:
+            month_invoices = supabase_client.table("invoices")\
+                .select("total")\
+                .eq("salon_id", salon_id)\
+                .gte("date", this_month)\
+                .eq("status", "paid")\
+                .execute()
+            
+            if month_invoices.data:
+                month_revenue = sum(inv.get("total", 0) for inv in month_invoices.data)
+        except Exception as e:
+            print(f"Error getting month revenue: {e}")
+        
         # Calculate revenue growth
         if yesterday_revenue == 0:
             revenue_growth = 100 if today_revenue > 0 else 0
         else:
             revenue_growth = int(((today_revenue - yesterday_revenue) / yesterday_revenue) * 100)
+        
+        # ===== APPOINTMENTS =====
         
         # Get today's appointments
         today_result = supabase_client.table("appointments")\
@@ -92,6 +125,8 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
         else:
             appointment_growth = int(((today_count - yesterday_count) / yesterday_count) * 100)
         
+        # ===== CUSTOMERS =====
+        
         # Get total customers
         customers_result = supabase_client.table("customers")\
             .select("*", count="exact")\
@@ -113,6 +148,8 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
             customer_growth = 0
         else:
             customer_growth = int((new_customers / total_customers) * 100)
+        
+        # ===== UPCOMING =====
         
         # Get upcoming appointments
         upcoming_result = supabase_client.table("appointments")\
@@ -148,7 +185,8 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
         except:
             next_appointment = None
         
-        # Get recent appointments
+        # ===== RECENT APPOINTMENTS =====
+        
         recent_result = supabase_client.table("appointments")\
             .select("*, customers(full_name)")\
             .eq("salon_id", salon_id)\
@@ -176,7 +214,8 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
                     "status": apt.get("status", "scheduled")
                 })
         
-        # Return response
+        # ===== RESPONSE =====
+        
         return {
             "salon_exists": True,
             "salon": {
@@ -186,14 +225,17 @@ async def get_dashboard_stats(token: str = Depends(oauth2_scheme)):
                 "phone": salon.get("phone", "")
             },
             "stats": {
-                "today_revenue": today_revenue,
+                "today_revenue": total_revenue,  # Shows TOTAL revenue from all paid invoices
                 "today_appointments": today_count,
                 "total_customers": total_customers,
                 "upcoming_appointments": upcoming_count,
                 "revenue_growth": revenue_growth,
                 "appointment_growth": appointment_growth,
                 "customer_growth": customer_growth,
-                "next_appointment": next_appointment
+                "next_appointment": next_appointment,
+                # Additional fields for more context
+                "today_revenue_only": today_revenue,
+                "month_revenue": month_revenue
             },
             "recent_appointments": recent_appointments
         }
