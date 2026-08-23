@@ -29,6 +29,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
     fetchAppointments()
@@ -39,6 +40,9 @@ export default function AppointmentsPage() {
       setLoading(true)
       const response = await appointmentsApi.getAll()
       setAppointments(response.data)
+      // ✅ Pending requests count
+      const pending = response.data.filter((apt: any) => apt.status === 'requested')
+      setPendingCount(pending.length)
     } catch (error) {
       console.error('Failed to fetch appointments:', error)
     } finally {
@@ -48,16 +52,18 @@ export default function AppointmentsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
-      scheduled: { className: 'bg-blue-100 text-blue-800', icon: <Calendar className="h-3 w-3 mr-1" /> },
-      completed: { className: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3 mr-1" /> },
-      cancelled: { className: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3 mr-1" /> },
-      'no-show': { className: 'bg-gray-100 text-gray-800', icon: <AlertCircle className="h-3 w-3 mr-1" /> },
+      scheduled: { className: 'bg-blue-100 text-blue-800', label: 'Scheduled' },
+      requested: { className: 'bg-yellow-100 text-yellow-800', label: '⏳ Pending' },
+      approved: { className: 'bg-green-100 text-green-800', label: '✅ Approved' },
+      completed: { className: 'bg-gray-100 text-gray-800', label: 'Completed' },
+      cancelled: { className: 'bg-red-100 text-red-800', label: 'Cancelled' },
+      'no-show': { className: 'bg-gray-100 text-gray-800', label: 'No Show' },
+      rescheduled_pending: { className: 'bg-purple-100 text-purple-800', label: '⏳ Reschedule Pending' },
     }
     const variant = variants[status] || variants.scheduled
     return (
       <Badge className={`${variant.className} flex items-center px-2 py-0.5 text-xs font-medium`}>
-        {variant.icon}
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {variant.label}
       </Badge>
     )
   }
@@ -88,7 +94,15 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Appointments</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            Appointments
+            {/* ✅ Pending badge */}
+            {pendingCount > 0 && (
+              <Badge className="bg-red-500 text-white hover:bg-red-600 px-3 py-1 text-sm">
+                {pendingCount} Pending
+              </Badge>
+            )}
+          </h1>
           <p className="text-sm text-gray-500">Manage your salon appointments</p>
         </div>
         <Link href="/dashboard/appointments/new">
@@ -117,9 +131,12 @@ export default function AppointmentsPage() {
         >
           <option value="all">All Status</option>
           <option value="scheduled">Scheduled</option>
+          <option value="requested">Pending Approval</option>
+          <option value="approved">Approved</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
           <option value="no-show">No Show</option>
+          <option value="rescheduled_pending">Reschedule Pending</option>
         </select>
         {(search || filter !== 'all') && (
           <Button 
