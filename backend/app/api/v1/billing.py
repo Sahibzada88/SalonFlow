@@ -65,14 +65,10 @@ class PaymentResponse(BaseModel):
 
 # ========== Helper Functions ==========
 
-async def get_salon_id(user_id: str):
-    response = supabase_client.table("salons")\
-        .select("id")\
-        .eq("owner_id", user_id)\
-        .execute()
-    if not response.data:
-        return None
-    return response.data[0]["id"]
+from app.core.helpers import get_user_salon_id
+
+
+
 
 async def generate_invoice_number(salon_id: str):
     """Generate a unique invoice number"""
@@ -95,7 +91,7 @@ async def create_invoice(invoice_data: InvoiceCreate, token: str = Depends(oauth
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=400, detail="No salon found")
         
@@ -198,7 +194,7 @@ async def get_invoices(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             return []
         
@@ -243,7 +239,7 @@ async def get_invoice(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
@@ -326,7 +322,7 @@ async def delete_invoice(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
@@ -361,7 +357,7 @@ async def add_payment(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
@@ -426,7 +422,7 @@ async def get_invoice_payments(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
@@ -468,7 +464,7 @@ async def get_billing_stats(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             return {"error": "No salon found"}
         
@@ -511,7 +507,7 @@ async def download_invoice_pdf(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Invoice not found")
         
@@ -590,7 +586,7 @@ async def print_invoice_pdf(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Invoice not found")
         

@@ -2,10 +2,15 @@
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Scissors, Calendar, Users, BarChart3, Sparkles, CheckCircle } from 'lucide-react'
+import { Scissors, Calendar, Users, BarChart3, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Home() {
+  // ✅ Get salon name from environment
+  const salonName = process.env.NEXT_PUBLIC_SALON_NAME || 'Dev Salon'
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'SalonFlow'
+  const appDescription = process.env.NEXT_PUBLIC_APP_DESCRIPTION || 'Salon Management Made Simple'
+
   const features = [
     {
       icon: <Calendar className="h-8 w-8 text-blue-600" />,
@@ -36,14 +41,23 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Scissors className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SalonFlow</span>
+            <span className="text-2xl font-bold text-gray-900">{appName}</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link href="/auth/login">
-              <Button variant="outline">Sign In</Button>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                Staff / Owner Login
+              </Button>
             </Link>
-            <Link href="/auth/register">
-              <Button className="bg-blue-600 hover:bg-blue-700">Get Started</Button>
+            <Link href="/auth/login">
+              <Button variant="outline">
+                Customer Login
+              </Button>
+            </Link>
+            <Link href="/auth/register-customer">
+              <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                Register
+              </Button>
             </Link>
           </div>
         </div>
@@ -52,22 +66,17 @@ export default function Home() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
-            <Sparkles className="h-4 w-4" />
-            Launching Soon in Pakistan
-          </div>
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Salon Management
-            <span className="text-blue-600"> Made Simple</span>
+            {appDescription}
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             The all-in-one SaaS platform for salons to manage appointments, 
             customers, billing, and grow your business.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/auth/register">
+            <Link href="/auth/login">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-lg px-8">
-                Start Free Trial
+                Get Started
               </Button>
             </Link>
             <Link href="#features">
@@ -76,9 +85,6 @@ export default function Home() {
               </Button>
             </Link>
           </div>
-          <p className="text-sm text-gray-500 mt-4">
-            🎯 First 10 salons get 3 months free
-          </p>
         </div>
       </section>
 
@@ -89,7 +95,7 @@ export default function Home() {
             Everything You Need to Run Your Salon
           </h2>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            From appointment booking to customer loyalty, we've got you covered
+            From appointment booking to customer loyalty, we have got you covered
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -113,7 +119,7 @@ export default function Home() {
               <div className="inline-block bg-blue-100 text-blue-700 px-4 py-1 rounded-full text-sm font-medium mb-4">
                 Launch Special
               </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">SalonFlow Pro</h3>
+              <h3 className="text-3xl font-bold text-gray-900 mb-2">{appName} Pro</h3>
               <div className="flex items-center justify-center gap-1 mb-4">
                 <span className="text-4xl font-bold text-gray-900">Rs. 2,999</span>
                 <span className="text-gray-600">/month</span>
@@ -125,8 +131,8 @@ export default function Home() {
                   "Customer management",
                   "Staff scheduling",
                   "Inventory tracking",
-                  "Billing & invoices",
-                  "Reports & analytics"
+                  "Billing and invoices",
+                  "Reports and analytics"
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-green-500" />
@@ -134,7 +140,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <Link href="/auth/register">
+              <Link href="/auth/login">
                 <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700">
                   Start Your Free Trial
                 </Button>
@@ -150,10 +156,15 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2">
               <Scissors className="h-6 w-6 text-blue-600" />
-              <span className="font-semibold text-gray-900">SalonFlow</span>
+              <span className="font-semibold text-gray-900">{appName}</span>
+              <span className="text-xs text-gray-400">|</span>
+              <Link href="/" className="text-xs text-blue-600 hover:underline font-medium">
+                {salonName}
+              </Link>
+              <span className="text-xs text-gray-400">- Powered by {appName}</span>
             </div>
             <p className="text-sm text-gray-500">
-              © 2026 SalonFlow. Made with ❤️ for Pakistani salons
+              © 2026 {appName}. All rights reserved.
             </p>
           </div>
         </div>

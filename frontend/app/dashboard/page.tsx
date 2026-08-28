@@ -3,15 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
-  Calendar, 
-  Users, 
-  DollarSign, 
-  Clock,
-  UserPlus
+  Calendar, Users, DollarSign, Clock, UserPlus, 
+  Scissors, LayoutDashboard, CreditCard, UserCog 
 } from 'lucide-react'
 import { api } from '@/services/api'
 
@@ -19,6 +16,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [salon, setSalon] = useState<any>(null)
+  const [userRole, setUserRole] = useState('')
   const [recentAppointments, setRecentAppointments] = useState<any[]>([])
   const [stats, setStats] = useState({
     todayRevenue: 0,
@@ -27,43 +25,46 @@ export default function DashboardPage() {
     upcomingAppointments: 0,
     appointmentGrowth: 0,
     customerGrowth: 0,
-    revenueGrowth: 0,
     nextAppointment: null as string | null
   })
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
+    const role = localStorage.getItem('user_role')
     if (!token) {
       router.push('/auth/login')
       return
     }
-
-    api.get('/dashboard/stats')
-      .then(response => {
-        const data = response.data
-        if (!data.salon_exists) {
-          router.push('/salon-setup')
-          return
-        }
-        setSalon(data.salon)
-        setStats({
-          todayRevenue: data.stats?.today_revenue ?? 0,
-          todayAppointments: data.stats?.today_appointments ?? 0,
-          totalCustomers: data.stats?.total_customers ?? 0,
-          upcomingAppointments: data.stats?.upcoming_appointments ?? 0,
-          appointmentGrowth: data.stats?.appointment_growth ?? 0,
-          customerGrowth: data.stats?.customer_growth ?? 0,
-          revenueGrowth: data.stats?.revenue_growth ?? 0,
-          nextAppointment: data.stats?.next_appointment ?? null
-        })
-        setRecentAppointments(data.recent_appointments || [])
-        setLoading(false)
-      })
-      .catch(() => {
-        localStorage.removeItem('access_token')
-        router.push('/auth/login')
-      })
+    setUserRole(role || '')
+    fetchDashboardData()
   }, [router])
+
+  const fetchDashboardData = async () => {
+    try {
+      const response = await api.get('/dashboard/stats')
+      const data = response.data
+      if (!data.salon_exists) {
+        router.push('/salon-setup')
+        return
+      }
+      setSalon(data.salon)
+      setStats({
+        todayRevenue: data.stats?.today_revenue ?? 0,
+        todayAppointments: data.stats?.today_appointments ?? 0,
+        totalCustomers: data.stats?.total_customers ?? 0,
+        upcomingAppointments: data.stats?.upcoming_appointments ?? 0,
+        appointmentGrowth: data.stats?.appointment_growth ?? 0,
+        customerGrowth: data.stats?.customer_growth ?? 0,
+        nextAppointment: data.stats?.next_appointment ?? null
+      })
+      setRecentAppointments(data.recent_appointments || [])
+      setLoading(false)
+    } catch (error) {
+      console.error(error)
+      localStorage.removeItem('access_token')
+      router.push('/auth/login')
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
@@ -75,27 +76,8 @@ export default function DashboardPage() {
     return variants[status] || variants.scheduled
   }
 
-  const formatGrowth = (value: number) => {
-    if (value === undefined || value === null || isNaN(value)) return '0%'
-    return `${value}%`
-  }
-
-  const getGrowthColor = (value: number) => {
-    if (value === undefined || value === null || isNaN(value)) return 'text-gray-500'
-    if (value > 0) return 'text-green-600'
-    if (value < 0) return 'text-red-600'
-    return 'text-gray-500'
-  }
-
-  const getGrowthIcon = (value: number) => {
-    if (value === undefined || value === null || isNaN(value) || value === 0) return ''
-    if (value > 0) return '↑'
-    if (value < 0) return '↓'
-    return ''
-  }
-
   if (loading) {
-    return <div className="flex items-center justify-center h-64">Loading dashboard...</div>
+    return <div className="flex justify-center py-8">Loading dashboard...</div>
   }
 
   return (
@@ -117,19 +99,15 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
-          <DollarSign className="h-4 w-4 text-green-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">Rs. {stats.todayRevenue.toLocaleString()}</div>
-          <p className={`text-sm mt-1 ${getGrowthColor(stats.revenueGrowth)}`}>
-            {getGrowthIcon(stats.revenueGrowth)} {formatGrowth(stats.revenueGrowth)} from yesterday
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">Total from all paid invoices</p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-medium text-gray-600">Today's Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Rs. {stats.todayRevenue.toLocaleString()}</div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
@@ -138,9 +116,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayAppointments}</div>
-            <p className={`text-sm mt-1 ${getGrowthColor(stats.appointmentGrowth)}`}>
-              {getGrowthIcon(stats.appointmentGrowth)} {formatGrowth(stats.appointmentGrowth)} from yesterday
-            </p>
           </CardContent>
         </Card>
 
@@ -151,9 +126,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalCustomers}</div>
-            <p className={`text-sm mt-1 ${getGrowthColor(stats.customerGrowth)}`}>
-              {getGrowthIcon(stats.customerGrowth)} {formatGrowth(stats.customerGrowth)} this month
-            </p>
           </CardContent>
         </Card>
 
@@ -179,18 +151,18 @@ export default function DashboardPage() {
         <CardContent>
           <div className="space-y-4">
             {recentAppointments.length === 0 ? (
-              <p className="text-gray-500">No appointments yet. Start booking!</p>
+              <p className="text-gray-500">No appointments yet.</p>
             ) : (
               recentAppointments.map((apt: any) => (
                 <div key={apt.id} className="flex items-center justify-between border-b pb-4 last:border-0">
                   <div>
-                    <p className="font-medium">{apt.customer_name || 'Unknown Customer'}</p>
-                    <p className="text-sm text-gray-600">{apt.title || 'Service'}</p>
+                    <p className="font-medium">{apt.customer_name}</p>
+                    <p className="text-sm text-gray-600">{apt.title}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">{apt.start_time || '--:--'}</p>
+                    <p className="text-sm font-medium">{apt.start_time}</p>
                     <Badge className={getStatusBadge(apt.status)}>
-                      {apt.status ? apt.status.charAt(0).toUpperCase() + apt.status.slice(1) : 'Scheduled'}
+                      {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
                     </Badge>
                   </div>
                 </div>

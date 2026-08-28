@@ -4,8 +4,12 @@ import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// ✅ Get app name from environment
+const appName = process.env.NEXT_PUBLIC_APP_NAME || 'SalonFlow'
+const appDescription = process.env.NEXT_PUBLIC_APP_DESCRIPTION || 'Salon Management Made Simple'
+
 export const metadata: Metadata = {
-  title: 'SalonFlow - Salon Management Software',
+  title: appName + ' - ' + appDescription,
   description: 'Manage your salon appointments, customers, and billing',
 }
 

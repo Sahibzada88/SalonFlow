@@ -43,7 +43,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 # Import your routes
-from app.api.v1 import auth, salons, dashboard, customers, appointments, billing
+from app.api.v1 import auth, salons, dashboard, customers, appointments, billing, staff
 from app.core.config import settings
 
 app = FastAPI(
@@ -68,6 +68,7 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboar
 app.include_router(customers.router, prefix="/api/v1/customers", tags=["Customers"])
 app.include_router(appointments.router, prefix="/api/v1/appointments", tags=["Appointments"])
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
+app.include_router(staff.router, prefix="/api/v1/staff", tags=["Staff"])
 
 @app.get("/")
 async def root():

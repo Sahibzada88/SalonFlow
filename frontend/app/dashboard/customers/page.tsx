@@ -5,10 +5,18 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, User, Edit, Trash2 } from 'lucide-react'
+import { 
+  Plus, 
+  Search, 
+  User,
+  Edit,
+  Eye,
+  Trash2,
+  Users
+} from 'lucide-react'
 import { customersApi } from '@/services/api'
 
 export default function CustomersPage() {
@@ -25,9 +33,11 @@ export default function CustomersPage() {
     try {
       setLoading(true)
       const response = await customersApi.getAll(searchTerm ? { search: searchTerm } : {})
-      setCustomers(response.data)
+      console.log('📊 Customers Response:', response.data)
+      setCustomers(response.data || [])
     } catch (error) {
       console.error('Failed to fetch customers:', error)
+      setCustomers([])
     } finally {
       setLoading(false)
     }
@@ -49,8 +59,16 @@ export default function CustomersPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <p className="text-gray-500">Loading customers...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-8">
+    <div>
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
@@ -110,13 +128,7 @@ export default function CustomersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                    Loading customers...
-                  </TableCell>
-                </TableRow>
-              ) : customers.length === 0 ? (
+              {customers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No customers found. Add your first customer!
@@ -136,14 +148,14 @@ export default function CustomersPage() {
                       {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString() : '-'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1">
                         <Link href={`/dashboard/customers/${customer.id}`}>
-                          <Button variant="ghost" size="sm">
-                            <User className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View">
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
                         <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
@@ -151,7 +163,8 @@ export default function CustomersPage() {
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleDelete(customer.id)}
-                          className="text-red-500 hover:text-red-700"
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -9,17 +10,33 @@ import {
   Users,
   Calendar,
   CreditCard,
-  LogOut
+  LogOut,
+  UserCog
 } from 'lucide-react'
 
 export function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
+  const [userRole, setUserRole] = useState('')
+  const [mounted, setMounted] = useState(false)
+
+  // ✅ Only run on client side
+  useEffect(() => {
+    setMounted(true)
+    const role = localStorage.getItem('user_role') || ''
+    setUserRole(role)
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem('access_token')
+    localStorage.removeItem('user_role')
+    localStorage.removeItem('user_id')
     router.push('/auth/login')
   }
+
+  // ✅ Get salon name from environment
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'SalonFlow'
+  const salonName = process.env.NEXT_PUBLIC_SALON_NAME || ''
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -28,12 +45,43 @@ export function Sidebar() {
     { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
   ]
 
+  if (userRole === 'owner') {
+    navItems.push({ href: '/dashboard/staff', label: 'Staff', icon: UserCog })
+  }
+
+  // ✅ Show loading state before mounted
+  if (!mounted) {
+    return (
+      <div className="fixed left-0 top-0 h-full w-64 bg-white border-r p-6 flex flex-col">
+        <div className="flex items-center gap-2 mb-8">
+          <Scissors className="h-8 w-8 text-blue-600" />
+          <span className="text-xl font-bold text-gray-900">{appName}</span>
+        </div>
+        <div className="flex-1 space-y-2">
+          {navItems.map((item) => (
+            <div key={item.href} className="h-10 bg-gray-100 rounded animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed left-0 top-0 h-full w-64 bg-white border-r p-6 flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-2 mb-8">
         <Scissors className="h-8 w-8 text-blue-600" />
-        <span className="text-xl font-bold text-gray-900">SalonFlow</span>
+        <div className="flex flex-col">
+          <span className="text-xl font-bold text-gray-900">{appName}</span>
+          {salonName && (
+            <span className="text-xs text-gray-400">{salonName}</span>
+          )}
+        </div>
+        {userRole && (
+          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-auto">
+            {userRole}
+          </span>
+        )}
       </div>
 
       {/* Navigation */}

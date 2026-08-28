@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,10 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  DollarSign
+  DollarSign,
+  Calendar,
+  Clock,
+  User
 } from 'lucide-react'
 import { billingApi } from '@/services/api'
 import { customersApi } from '@/services/api'
@@ -22,19 +25,32 @@ import { appointmentsApi } from '@/services/api'
 
 export default function NewInvoicePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // ✅ Get pre-filled data from URL
+  const appointmentId = searchParams?.get('appointment_id') || ''
+  const customerId = searchParams?.get('customer_id') || ''
+  const appointmentTitle = searchParams?.get('title') || ''
+  const appointmentDate = searchParams?.get('date') || ''
+  const appointmentStartTime = searchParams?.get('start_time') || ''
+  const appointmentEndTime = searchParams?.get('end_time') || ''
+  
   const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState('')
   const [customers, setCustomers] = useState([])
-  const [appointments, setAppointments] = useState([])
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
+  const [appointment, setAppointment] = useState<any>(null)
+  const [appointmentsByCustomer, setAppointmentsByCustomer] = useState([])
   const [formData, setFormData] = useState({
-    customer_id: '',
-    appointment_id: '',
-    date: new Date().toISOString().split('T')[0],
+    customer_id: customerId || '',
+    appointment_id: appointmentId || '',
+    date: appointmentDate || new Date().toISOString().split('T')[0],
     subtotal: 0,
     discount: 0,
     tax: 0,
     total: 0,
-    status: 'paid',
+    status: 'pending',
     payment_method: 'cash',
     notes: '',
     items: [{ description: '', quantity: 1, unit_price: 0 }]
@@ -42,18 +58,73 @@ export default function NewInvoicePage() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [customerId, appointmentId])
 
   const fetchData = async () => {
     try {
-      const [customersRes, appointmentsRes] = await Promise.all([
-        customersApi.getAll(),
-        appointmentsApi.getAll()
-      ])
+      setLoadingData(true)
+      
+      // Fetch customers
+      const customersRes = await customersApi.getAll()
       setCustomers(customersRes.data || [])
-      setAppointments(appointmentsRes.data || [])
+      
+      // If customer_id is provided, fetch customer details
+      if (customerId) {
+        const customerRes = await customersApi.getOne(customerId)
+        setSelectedCustomer(customerRes.data)
+        
+        // Fetch appointments for this customer
+        try {
+          const aptRes = await appointmentsApi.getByCustomer(customerId)
+          setAppointmentsByCustomer(aptRes.data || [])
+        } catch (e) {
+          console.log('No appointments found for customer')
+          setAppointmentsByCustomer([])
+        }
+      }
+      
+      // If appointment_id is provided, fetch appointment details
+      if (appointmentId) {
+        try {
+          const aptRes = await appointmentsApi.getOne(appointmentId)
+          setAppointment(aptRes.data)
+          // Set date from appointment
+          if (aptRes.data.date) {
+            setFormData(prev => ({ ...prev, date: aptRes.data.date }))
+          }
+          // Add appointment as item
+          const title = aptRes.data.title || 'Service'
+          setFormData(prev => ({
+            ...prev,
+            items: [{ description: title, quantity: 1, unit_price: 0 }]
+          }))
+        } catch (e) {
+          console.log('Appointment not found')
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error)
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  // ✅ Fetch appointments when customer changes
+  useEffect(() => {
+    if (formData.customer_id) {
+      fetchAppointmentsByCustomer(formData.customer_id)
+    } else {
+      setAppointmentsByCustomer([])
+    }
+  }, [formData.customer_id])
+
+  const fetchAppointmentsByCustomer = async (customerId: string) => {
+    try {
+      const aptRes = await appointmentsApi.getByCustomer(customerId)
+      setAppointmentsByCustomer(aptRes.data || [])
+    } catch (error) {
+      console.error('Failed to fetch appointments:', error)
+      setAppointmentsByCustomer([])
     }
   }
 
@@ -94,8 +165,7 @@ export default function NewInvoicePage() {
       ...prev,
       items: prev.items.map((item, i) => {
         if (i === index) {
-          const updated = { ...item, [field]: value }
-          return updated
+          return { ...item, [field]: value }
         }
         return item
       })
@@ -115,6 +185,13 @@ export default function NewInvoicePage() {
       return
     }
 
+    // Validate customer selected
+    if (!formData.customer_id) {
+      setError('Please select a customer')
+      setLoading(false)
+      return
+    }
+
     try {
       await billingApi.create(formData)
       router.push('/dashboard/billing')
@@ -123,6 +200,14 @@ export default function NewInvoicePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loadingData) {
+    return (
+      <div className="flex justify-center py-8">
+        <p className="text-gray-500">Loading invoice data...</p>
+      </div>
+    )
   }
 
   return (
@@ -135,7 +220,38 @@ export default function NewInvoicePage() {
           </Button>
         </Link>
         <h1 className="text-3xl font-bold text-gray-900">New Invoice</h1>
+        {appointment && (
+          <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+            From Appointment: {appointment.title}
+          </span>
+        )}
       </div>
+
+      {/* ✅ Show Appointment Info if pre-filled */}
+      {appointment && (
+        <Card className="mb-6 bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-blue-600" />
+                <span className="font-medium">{selectedCustomer?.full_name || 'Customer'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-blue-600" />
+                <span>{appointment.date}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <span>{appointment.start_time} - {appointment.end_time}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500">Service:</span>
+                <span className="font-medium">{appointment.title || 'Service'}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
@@ -157,7 +273,7 @@ export default function NewInvoicePage() {
                 <select
                   className="w-full px-3 py-2 border rounded-md"
                   value={formData.customer_id}
-                  onChange={(e) => setFormData({...formData, customer_id: e.target.value})}
+                  onChange={(e) => setFormData({...formData, customer_id: e.target.value, appointment_id: ''})}
                   required
                 >
                   <option value="">Select a customer...</option>
@@ -168,16 +284,17 @@ export default function NewInvoicePage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Appointment (Optional)</Label>
+                <Label>Appointment</Label>
                 <select
                   className="w-full px-3 py-2 border rounded-md"
                   value={formData.appointment_id}
                   onChange={(e) => setFormData({...formData, appointment_id: e.target.value})}
+                  disabled={!formData.customer_id}
                 >
-                  <option value="">Select an appointment...</option>
-                  {appointments.map((a: any) => (
+                  <option value="">Select an appointment (optional)</option>
+                  {appointmentsByCustomer.map((a: any) => (
                     <option key={a.id} value={a.id}>
-                      {a.date} - {a.customer_name} ({a.title})
+                      {a.date} - {a.title || 'Service'} ({a.start_time})
                     </option>
                   ))}
                 </select>

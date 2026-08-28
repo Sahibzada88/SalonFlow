@@ -44,10 +44,23 @@ export default function BillingPage() {
         api.get('/billing/invoices'),
         api.get('/billing/stats')
       ])
-      setInvoices(invoicesRes.data)
-      setStats(statsRes.data)
+      setInvoices(invoicesRes.data || [])
+      
+      // ✅ Set stats with fallback values
+      const statsData = statsRes.data || {}
+      setStats({
+        total_revenue: statsData.total_revenue || 0,
+        total_invoices: statsData.total_invoices || 0,
+        average_invoice: statsData.average_invoice || 0
+      })
     } catch (error) {
       console.error('Failed to fetch billing data:', error)
+      // ✅ Set default values on error
+      setStats({
+        total_revenue: 0,
+        total_invoices: 0,
+        average_invoice: 0
+      })
     } finally {
       setLoading(false)
     }
@@ -63,7 +76,6 @@ export default function BillingPage() {
     }
   }
 
-
   const handleDownloadPDF = async (id: string, invoiceNumber: string) => {
     try {
       const response = await billingApi.downloadPDF(id)
@@ -78,9 +90,6 @@ export default function BillingPage() {
       alert('Failed to download PDF')
     }
   }
-
-
-
 
   const filteredInvoices = invoices.filter((inv: any) => {
     if (search) {
@@ -99,6 +108,22 @@ export default function BillingPage() {
       cancelled: 'bg-red-100 text-red-800',
     }
     return variants[status] || variants.pending
+  }
+
+  // ✅ Helper function for safe formatting
+  const formatCurrency = (value: any) => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return '0'
+    }
+    return value.toLocaleString()
+  }
+
+  // ✅ Helper function for safe rounding
+  const roundValue = (value: any) => {
+    if (value === undefined || value === null || isNaN(value)) {
+      return 0
+    }
+    return Math.round(value)
   }
 
   return (
@@ -124,7 +149,7 @@ export default function BillingPage() {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Rs. {stats.total_revenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">Rs. {formatCurrency(stats.total_revenue)}</div>
           </CardContent>
         </Card>
 
@@ -134,7 +159,7 @@ export default function BillingPage() {
             <FileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total_invoices}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.total_invoices)}</div>
           </CardContent>
         </Card>
 
@@ -144,7 +169,7 @@ export default function BillingPage() {
             <DollarSign className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Rs. {Math.round(stats.average_invoice).toLocaleString()}</div>
+            <div className="text-2xl font-bold">Rs. {formatCurrency(roundValue(stats.average_invoice))}</div>
           </CardContent>
         </Card>
       </div>
@@ -200,10 +225,11 @@ export default function BillingPage() {
                     <TableCell className="font-medium">{inv.invoice_number}</TableCell>
                     <TableCell>{inv.customer_name || 'Unknown'}</TableCell>
                     <TableCell>{inv.date}</TableCell>
-                    <TableCell>Rs. {inv.total.toLocaleString()}</TableCell>
+                    <TableCell>Rs. {(inv.total || 0).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge className={getStatusBadge(inv.payment_status || inv.status)}>
-                        {(inv.payment_status || inv.status).charAt(0).toUpperCase() + (inv.payment_status || inv.status).slice(1).replace('_', ' ')}
+                        {(inv.payment_status || inv.status || 'pending').charAt(0).toUpperCase() + 
+                         (inv.payment_status || inv.status || 'pending').slice(1).replace('_', ' ')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">

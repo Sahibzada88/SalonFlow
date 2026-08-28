@@ -4,7 +4,8 @@ from typing import Optional, List
 from datetime import date, time
 from app.core.supabase_client import supabase_client
 from app.api.v1.auth import oauth2_scheme
-from app.api.v1.billing import get_salon_id
+from app.core.helpers import get_user_salon_id  # ✅ New import
+
 
 router = APIRouter()
 
@@ -47,7 +48,7 @@ async def get_appointments(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             return []
         
@@ -82,7 +83,7 @@ async def get_appointments_by_customer(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             return []
         
@@ -118,6 +119,9 @@ async def get_appointments_by_customer(
 # ============================================
 # CREATE APPOINTMENT (Customer Requests)
 # ============================================
+# ============================================
+# CREATE APPOINTMENT (Customer Requests)
+# ============================================
 @router.post("/")
 async def create_appointment(appointment_data: AppointmentCreate, token: str = Depends(oauth2_scheme)):
     try:
@@ -125,17 +129,30 @@ async def create_appointment(appointment_data: AppointmentCreate, token: str = D
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_response = supabase_client.table("salons")\
-            .select("id")\
-            .eq("owner_id", user.user.id)\
-            .execute()
+        print(f"📝 Creating appointment for user: {user.user.id}")
         
-        if not salon_response.data:
-            raise HTTPException(status_code=400, detail="No salon found")
+        # Get salon_id using helper
+        salon_id = await get_user_salon_id(user.user.id)
+        print(f"🏪 Salon ID from helper: {salon_id}")
         
-        salon_id = salon_response.data[0]["id"]
+        # If helper returns None, try direct query
+        if not salon_id:
+            print("🔍 Trying direct customer query...")
+            customer_direct = supabase_client.table("customers")\
+                .select("salon_id")\
+                .eq("id", user.user.id)\
+                .execute()
+            print(f"📊 Direct customer query: {customer_direct.data}")
+            
+            if customer_direct.data:
+                salon_id = customer_direct.data[0].get("salon_id")
+                print(f"✅ Found salon_id directly: {salon_id}")
         
-        # VALIDATION: Customer must exist
+        if not salon_id:
+            print(f"❌ No salon found for user: {user.user.id}")
+            raise HTTPException(status_code=400, detail="No salon found for this user")
+        
+        # Verify customer exists
         customer_check = supabase_client.table("customers")\
             .select("id")\
             .eq("id", appointment_data.customer_id)\
@@ -143,9 +160,12 @@ async def create_appointment(appointment_data: AppointmentCreate, token: str = D
             .execute()
         
         if not customer_check.data:
+            print(f"❌ Customer not found: {appointment_data.customer_id}")
             raise HTTPException(status_code=400, detail="Customer not found in your salon")
         
-        # VALIDATION: Check for double booking
+        print(f"✅ Customer verified: {appointment_data.customer_id}")
+        
+        # Check double booking
         conflict_check = supabase_client.table("appointments")\
             .select("id")\
             .eq("salon_id", salon_id)\
@@ -157,7 +177,7 @@ async def create_appointment(appointment_data: AppointmentCreate, token: str = D
         if conflict_check.data:
             raise HTTPException(status_code=400, detail="Time slot already booked")
         
-        # ✅ Use stored procedure for appointment request
+        # Create appointment
         result = supabase_client.rpc(
             "request_appointment",
             {
@@ -171,10 +191,13 @@ async def create_appointment(appointment_data: AppointmentCreate, token: str = D
             }
         ).execute()
         
+        print(f"✅ Appointment created successfully")
         return result.data
         
     except Exception as e:
-        print(f"Create appointment error: {e}")
+        print(f"❌ Create appointment error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 # ============================================
@@ -187,7 +210,7 @@ async def update_appointment(appointment_id: str, appointment_data: AppointmentC
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=400, detail="No salon found")
         
@@ -226,7 +249,7 @@ async def approve_appointment(
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=403, detail="Only staff can approve appointments")
         
@@ -301,7 +324,7 @@ async def update_appointment_status(appointment_id: str, status: str, token: str
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Appointment not found")
         
@@ -333,7 +356,7 @@ async def get_appointment(appointment_id: str, token: str = Depends(oauth2_schem
         if user.user is None:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        salon_id = await get_salon_id(user.user.id)
+        salon_id = await get_user_salon_id(user.user.id)
         if not salon_id:
             raise HTTPException(status_code=404, detail="Appointment not found")
 
@@ -402,4 +425,113 @@ async def mark_notification_read(
         
     except Exception as e:
         print(f"Mark notification read error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/customer/appointments")
+async def get_customer_appointments(token: str = Depends(oauth2_scheme)):
+    """Get appointments for the logged-in customer using stored procedure"""
+    try:
+        user = supabase_client.auth.get_user(token)
+        if user.user is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        user_id = user.user.id
+        print(f"🔍 Getting appointments for customer: {user_id}")
+        
+        # Get customer record first
+        customer = supabase_client.table("customers")\
+            .select("id, salon_id")\
+            .eq("id", user_id)\
+            .execute()
+        
+        print(f"📊 Customer record: {customer.data}")
+        
+        if not customer.data:
+            print("❌ No customer record found")
+            return []
+        
+        customer_id = customer.data[0]["id"]
+        salon_id = customer.data[0]["salon_id"]
+        
+        print(f"✅ Customer ID: {customer_id}, Salon ID: {salon_id}")
+        
+        # ✅ Use stored procedure with customer_id filter
+        result = supabase_client.rpc(
+            "get_appointments",
+            {
+                "p_salon_id": salon_id,
+                "p_customer_id": customer_id,  # ✅ Filter by customer
+                "p_limit": 100
+            }
+        ).execute()
+        
+        print(f"📊 Appointments found: {len(result.data) if result.data else 0}")
+        print(f"📊 Appointment data: {result.data}")
+        
+        return result.data if result.data else []
+        
+    except Exception as e:
+        print(f"❌ Get customer appointments error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{appointment_id}/approve")
+async def approve_appointment(
+    appointment_id: str,
+    approve_data: dict,
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = supabase_client.auth.get_user(token)
+        if user.user is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        salon_id = await get_user_salon_id(user.user.id)
+        if not salon_id:
+            raise HTTPException(status_code=403, detail="Only staff can approve appointments")
+        
+        # Verify appointment belongs to salon
+        apt_check = supabase_client.table("appointments")\
+            .select("id, customer_id, title, date, start_time, end_time")\
+            .eq("id", appointment_id)\
+            .eq("salon_id", salon_id)\
+            .execute()
+        
+        if not apt_check.data:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+        
+        apt_data = apt_check.data[0]
+        
+        # Approve appointment
+        result = supabase_client.rpc(
+            "approve_appointment",
+            {
+                "p_appointment_id": appointment_id,
+                "p_approved_by": user.user.id,
+                "p_new_date": approve_data.get("new_date"),
+                "p_new_start_time": approve_data.get("new_time"),
+                "p_reschedule_reason": approve_data.get("reason")
+            }
+        ).execute()
+        
+        # ✅ Return appointment details for redirection
+        return {
+            "message": "Appointment approved successfully",
+            "appointment": result.data,
+            "redirect": {
+                "url": f"/dashboard/billing/new?appointment_id={appointment_id}&customer_id={apt_data['customer_id']}",
+                "customer_id": apt_data["customer_id"],
+                "appointment_id": appointment_id,
+                "title": apt_data.get("title", "Service"),
+                "date": apt_data.get("date"),
+                "start_time": apt_data.get("start_time"),
+                "end_time": apt_data.get("end_time")
+            }
+        }
+        
+    except Exception as e:
+        print(f"Approve appointment error: {e}")
         raise HTTPException(status_code=400, detail=str(e))

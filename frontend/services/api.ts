@@ -18,6 +18,23 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+
+// ✅ Handle 401 errors - clear storage and redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      console.log('🔴 Token expired or invalid - logging out')
+      localStorage.clear()
+      // ✅ Redirect to login page
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 // Auth API calls
 export const authApi = {
   register: (data: any) => api.post('/auth/register', data),
@@ -92,6 +109,13 @@ export const appointmentsApi = {
   // Delete appointment
   delete: (id: string) => 
     api.delete(`/appointments/${id}`),
+
+
+  getCustomerAppointments: () => 
+    api.get('/appointments/customer/appointments'),
+
+  getByCustomer: (customerId: string) => 
+    api.get(`/appointments/by-customer/${customerId}`),
 }
 
 

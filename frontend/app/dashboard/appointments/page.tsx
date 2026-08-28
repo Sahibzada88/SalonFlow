@@ -19,9 +19,12 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Check,
+  X
 } from 'lucide-react'
 import { appointmentsApi } from '@/services/api'
+import { customersApi } from '@/services/api'
 
 export default function AppointmentsPage() {
   const router = useRouter()
@@ -30,17 +33,37 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [pendingCount, setPendingCount] = useState(0)
+  const [customerFilter, setCustomerFilter] = useState('')
+  const [customers, setCustomers] = useState([])
 
   useEffect(() => {
-    fetchAppointments()
+    fetchData()
   }, [])
+
+  const fetchData = async () => {
+    try {
+      const [aptRes, custRes] = await Promise.all([
+        appointmentsApi.getAll(),
+        customersApi.getAll()
+      ])
+      setAppointments(aptRes.data || [])
+      setCustomers(custRes.data || [])
+      
+      // Pending requests count
+      const pending = aptRes.data.filter((apt: any) => apt.status === 'requested')
+      setPendingCount(pending.length)
+    } catch (error) {
+      console.error('Failed to fetch data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchAppointments = async () => {
     try {
       setLoading(true)
       const response = await appointmentsApi.getAll()
       setAppointments(response.data)
-      // ✅ Pending requests count
       const pending = response.data.filter((apt: any) => apt.status === 'requested')
       setPendingCount(pending.length)
     } catch (error) {
@@ -79,8 +102,38 @@ export default function AppointmentsPage() {
     }
   }
 
+  // Approve appointment (staff action)
+  const handleApprove = async (id: string) => {
+    try {
+      const response = await appointmentsApi.updateStatus(id, 'approved')
+      
+      // ✅ Check if redirect data is available
+      if (response.data?.redirect?.url) {
+        // Redirect to invoice creation with pre-filled data
+        router.push(response.data.redirect.url)
+      } else {
+        // Fallback: just refresh the list
+        fetchAppointments()
+      }
+    } catch (error) {
+      alert('Failed to approve appointment')
+    }
+  }
+
+  // Reject appointment (staff action)
+  const handleReject = async (id: string) => {
+    if (!confirm('Are you sure you want to reject this appointment?')) return
+    try {
+      await appointmentsApi.updateStatus(id, 'cancelled')
+      fetchAppointments()
+    } catch (error) {
+      alert('Failed to reject appointment')
+    }
+  }
+
   const filteredAppointments = appointments.filter((apt: any) => {
     if (filter !== 'all' && apt.status !== filter) return false
+    if (customerFilter && apt.customer_id !== customerFilter) return false
     if (search) {
       const searchLower = search.toLowerCase()
       return apt.customer_name?.toLowerCase().includes(searchLower) ||
@@ -96,7 +149,6 @@ export default function AppointmentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
             Appointments
-            {/* ✅ Pending badge */}
             {pendingCount > 0 && (
               <Badge className="bg-red-500 text-white hover:bg-red-600 px-3 py-1 text-sm">
                 {pendingCount} Pending
@@ -124,6 +176,7 @@ export default function AppointmentsPage() {
             className="pl-9 h-9 text-sm"
           />
         </div>
+        
         <select
           className="px-3 py-1.5 border rounded-md bg-white text-sm h-9"
           value={filter}
@@ -131,18 +184,30 @@ export default function AppointmentsPage() {
         >
           <option value="all">All Status</option>
           <option value="scheduled">Scheduled</option>
-          <option value="requested">Pending Approval</option>
-          <option value="approved">Approved</option>
+          <option value="requested">⏳ Pending Approval</option>
+          <option value="approved">✅ Approved</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
           <option value="no-show">No Show</option>
-          <option value="rescheduled_pending">Reschedule Pending</option>
+          <option value="rescheduled_pending">⏳ Reschedule Pending</option>
         </select>
-        {(search || filter !== 'all') && (
+
+        <select
+          className="px-3 py-1.5 border rounded-md bg-white text-sm h-9"
+          value={customerFilter}
+          onChange={(e) => setCustomerFilter(e.target.value)}
+        >
+          <option value="">All Customers</option>
+          {customers.map((c: any) => (
+            <option key={c.id} value={c.id}>{c.full_name}</option>
+          ))}
+        </select>
+
+        {(search || filter !== 'all' || customerFilter) && (
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => { setSearch(''); setFilter('all'); fetchAppointments() }}
+            onClick={() => { setSearch(''); setFilter('all'); setCustomerFilter(''); fetchAppointments() }}
             className="h-9 text-sm"
           >
             Reset
@@ -210,11 +275,36 @@ export default function AppointmentsPage() {
                     </TableCell>
                     <TableCell className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {/* Approve/Reject buttons for pending requests */}
+                        {apt.status === 'requested' && (
+                          <>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleApprove(apt.id)}
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="Approve"
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleReject(apt.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Reject"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+
                         <Link href={`/dashboard/appointments/${apt.id}`}>
                           <Button 
                             variant="ghost" 
                             size="sm" 
                             className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                            title="View"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -224,6 +314,7 @@ export default function AppointmentsPage() {
                             variant="ghost" 
                             size="sm" 
                             className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                            title="Edit"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -233,6 +324,7 @@ export default function AppointmentsPage() {
                           size="sm"
                           onClick={() => handleDelete(apt.id)}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
