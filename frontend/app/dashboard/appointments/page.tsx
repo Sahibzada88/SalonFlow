@@ -105,16 +105,16 @@ export default function AppointmentsPage() {
   // Approve appointment (staff action)
   const handleApprove = async (id: string) => {
     try {
-      const response = await appointmentsApi.updateStatus(id, 'approved')
+      // ✅ Get appointment details first
+      const apt = await appointmentsApi.getOne(id)
+      const customerId = apt.data.customer_id
       
-      // ✅ Check if redirect data is available
-      if (response.data?.redirect?.url) {
-        // Redirect to invoice creation with pre-filled data
-        router.push(response.data.redirect.url)
-      } else {
-        // Fallback: just refresh the list
-        fetchAppointments()
-      }
+      // ✅ Approve the appointment
+      await appointmentsApi.updateStatus(id, 'approved')
+      
+      // ✅ Redirect to billing with pre-filled data
+      router.push(`/dashboard/billing/new?appointment_id=${id}&customer_id=${customerId}`)
+      
     } catch (error) {
       alert('Failed to approve appointment')
     }

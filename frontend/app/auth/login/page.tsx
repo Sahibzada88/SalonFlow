@@ -27,17 +27,18 @@ export default function LoginPage() {
     setError('')
     
     try {
+      // ✅ Clear all previous data before login
+      localStorage.clear()
+      
       const response = await authApi.login(loginInput, password)
       const { access_token, role, user_id, username, email } = response.data
       
-      // ✅ Clear old data first
-      localStorage.clear()
-      
-      // ✅ Save new data
+      // ✅ Set fresh data
       localStorage.setItem('access_token', access_token)
       localStorage.setItem('user_role', role)
       localStorage.setItem('user_id', user_id)
       localStorage.setItem('username', username || '')
+      localStorage.setItem('user_email', email)
       
       if (role === 'owner' || role === 'staff') {
         router.push('/dashboard')

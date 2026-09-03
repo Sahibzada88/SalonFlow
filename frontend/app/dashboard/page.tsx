@@ -39,6 +39,11 @@ export default function DashboardPage() {
     fetchDashboardData()
   }, [router])
 
+  useEffect(() => {
+    console.log('🔍 Customer Dashboard - User Role:', localStorage.getItem('user_role'))
+    console.log('🔍 Customer Dashboard - User ID:', localStorage.getItem('user_id'))
+  }, [])
+
   const fetchDashboardData = async () => {
     try {
       const response = await api.get('/dashboard/stats')

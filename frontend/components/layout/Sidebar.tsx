@@ -20,7 +20,6 @@ export function Sidebar() {
   const [userRole, setUserRole] = useState('')
   const [mounted, setMounted] = useState(false)
 
-  // ✅ Only run on client side
   useEffect(() => {
     setMounted(true)
     const role = localStorage.getItem('user_role') || ''
@@ -28,13 +27,10 @@ export function Sidebar() {
   }, [])
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('user_role')
-    localStorage.removeItem('user_id')
+    localStorage.clear()
     router.push('/auth/login')
   }
 
-  // ✅ Get salon name from environment
   const appName = process.env.NEXT_PUBLIC_APP_NAME || 'SalonFlow'
   const salonName = process.env.NEXT_PUBLIC_SALON_NAME || ''
 
@@ -45,11 +41,11 @@ export function Sidebar() {
     { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
   ]
 
-  if (userRole === 'owner') {
-    navItems.push({ href: '/dashboard/staff', label: 'Staff', icon: UserCog })
-  }
+  // ✅ REMOVED: Staff page temporarily hidden for all users
+  // if (userRole === 'owner') {
+  //   navItems.push({ href: '/dashboard/staff', label: 'Staff', icon: UserCog })
+  // }
 
-  // ✅ Show loading state before mounted
   if (!mounted) {
     return (
       <div className="fixed left-0 top-0 h-full w-64 bg-white border-r p-6 flex flex-col">

@@ -14,7 +14,6 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  DollarSign,
   Calendar,
   Clock,
   User
@@ -30,10 +29,6 @@ export default function NewInvoicePage() {
   // ✅ Get pre-filled data from URL
   const appointmentId = searchParams?.get('appointment_id') || ''
   const customerId = searchParams?.get('customer_id') || ''
-  const appointmentTitle = searchParams?.get('title') || ''
-  const appointmentDate = searchParams?.get('date') || ''
-  const appointmentStartTime = searchParams?.get('start_time') || ''
-  const appointmentEndTime = searchParams?.get('end_time') || ''
   
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
@@ -45,7 +40,7 @@ export default function NewInvoicePage() {
   const [formData, setFormData] = useState({
     customer_id: customerId || '',
     appointment_id: appointmentId || '',
-    date: appointmentDate || new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0],
     subtotal: 0,
     discount: 0,
     tax: 0,
@@ -68,31 +63,37 @@ export default function NewInvoicePage() {
       const customersRes = await customersApi.getAll()
       setCustomers(customersRes.data || [])
       
-      // If customer_id is provided, fetch customer details
+      // ✅ If customer_id provided, fetch customer details
       if (customerId) {
         const customerRes = await customersApi.getOne(customerId)
         setSelectedCustomer(customerRes.data)
         
-        // Fetch appointments for this customer
+        // ✅ Fetch appointments for this customer
         try {
           const aptRes = await appointmentsApi.getByCustomer(customerId)
           setAppointmentsByCustomer(aptRes.data || [])
         } catch (e) {
-          console.log('No appointments found for customer')
           setAppointmentsByCustomer([])
         }
       }
       
-      // If appointment_id is provided, fetch appointment details
+      // ✅ If appointment_id provided, fetch and pre-fill
       if (appointmentId) {
         try {
           const aptRes = await appointmentsApi.getOne(appointmentId)
           setAppointment(aptRes.data)
-          // Set date from appointment
+          
+          // ✅ Auto-fill date from appointment
           if (aptRes.data.date) {
-            setFormData(prev => ({ ...prev, date: aptRes.data.date }))
+            setFormData(prev => ({ 
+              ...prev, 
+              date: aptRes.data.date,
+              customer_id: aptRes.data.customer_id || customerId,
+              appointment_id: appointmentId
+            }))
           }
-          // Add appointment as item
+          
+          // ✅ Auto-fill service as first item
           const title = aptRes.data.title || 'Service'
           setFormData(prev => ({
             ...prev,
@@ -123,7 +124,6 @@ export default function NewInvoicePage() {
       const aptRes = await appointmentsApi.getByCustomer(customerId)
       setAppointmentsByCustomer(aptRes.data || [])
     } catch (error) {
-      console.error('Failed to fetch appointments:', error)
       setAppointmentsByCustomer([])
     }
   }
@@ -177,7 +177,6 @@ export default function NewInvoicePage() {
     setLoading(true)
     setError('')
 
-    // Validate items
     const hasEmptyItems = formData.items.some(item => !item.description.trim())
     if (hasEmptyItems) {
       setError('Please fill in all item descriptions')
@@ -185,7 +184,6 @@ export default function NewInvoicePage() {
       return
     }
 
-    // Validate customer selected
     if (!formData.customer_id) {
       setError('Please select a customer')
       setLoading(false)
@@ -203,11 +201,7 @@ export default function NewInvoicePage() {
   }
 
   if (loadingData) {
-    return (
-      <div className="flex justify-center py-8">
-        <p className="text-gray-500">Loading invoice data...</p>
-      </div>
-    )
+    return <div className="flex justify-center py-8"><p className="text-gray-500">Loading...</p></div>
   }
 
   return (
@@ -221,20 +215,20 @@ export default function NewInvoicePage() {
         </Link>
         <h1 className="text-3xl font-bold text-gray-900">New Invoice</h1>
         {appointment && (
-          <span className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
-            From Appointment: {appointment.title}
+          <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full">
+            ✅ From: {appointment.title}
           </span>
         )}
       </div>
 
-      {/* ✅ Show Appointment Info if pre-filled */}
-      {appointment && (
+      {/* ✅ Pre-filled Appointment Info */}
+      {appointment && selectedCustomer && (
         <Card className="mb-6 bg-blue-50 border-blue-200">
           <CardContent className="p-4">
-            <div className="flex flex-wrap gap-6 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4 text-blue-600" />
-                <span className="font-medium">{selectedCustomer?.full_name || 'Customer'}</span>
+                <span className="font-medium">{selectedCustomer.full_name}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-blue-600" />
@@ -244,9 +238,9 @@ export default function NewInvoicePage() {
                 <Clock className="h-4 w-4 text-blue-600" />
                 <span>{appointment.start_time} - {appointment.end_time}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div>
                 <span className="text-gray-500">Service:</span>
-                <span className="font-medium">{appointment.title || 'Service'}</span>
+                <span className="font-medium ml-1">{appointment.title}</span>
               </div>
             </div>
           </CardContent>
@@ -291,10 +285,10 @@ export default function NewInvoicePage() {
                   onChange={(e) => setFormData({...formData, appointment_id: e.target.value})}
                   disabled={!formData.customer_id}
                 >
-                  <option value="">Select an appointment (optional)</option>
+                  <option value="">Select an appointment</option>
                   {appointmentsByCustomer.map((a: any) => (
                     <option key={a.id} value={a.id}>
-                      {a.date} - {a.title || 'Service'} ({a.start_time})
+                      {a.date} - {a.title || 'Service'}
                     </option>
                   ))}
                 </select>

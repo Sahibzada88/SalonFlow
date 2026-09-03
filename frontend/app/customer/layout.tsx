@@ -1,16 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { 
-  Calendar, 
-  Home, 
-  LogOut,
-  Scissors,
-  Bell
-} from 'lucide-react'
+import { Calendar, Home, LogOut, Scissors } from 'lucide-react'
+import { api } from '@/services/api'
 
 export default function CustomerLayout({
   children,
@@ -21,16 +16,41 @@ export default function CustomerLayout({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      router.push('/auth/login')
-      return
+    const checkAuth = async () => {
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        router.push('/auth/login')
+        return
+      }
+
+      try {
+        // ✅ Verify user role from backend
+        const response = await api.get('/auth/me')
+        const userData = response.data
+        
+        // ✅ If not customer, redirect to dashboard
+        if (userData.role !== 'customer') {
+          // Update localStorage with correct role
+          localStorage.setItem('user_role', userData.role)
+          router.push('/dashboard')
+          return
+        }
+        
+        // ✅ Ensure customer role is set
+        localStorage.setItem('user_role', 'customer')
+        setLoading(false)
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        localStorage.clear()
+        router.push('/auth/login')
+      }
     }
-    setLoading(false)
+
+    checkAuth()
   }, [router])
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token')
+    localStorage.clear()
     router.push('/auth/login')
   }
 
@@ -40,22 +60,21 @@ export default function CustomerLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
       <div className="fixed left-0 top-0 h-full w-64 bg-white border-r p-6">
         <div className="flex items-center gap-2 mb-8">
           <Scissors className="h-8 w-8 text-blue-600" />
           <span className="text-xl font-bold text-gray-900">SalonFlow</span>
-          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Customer</span>
+          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Customer</span>
         </div>
         <nav className="space-y-2">
           <Link href="/customer/dashboard">
-            <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
+            <Button variant="default" className="w-full justify-start bg-blue-600 hover:bg-blue-700">
               <Home className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
           </Link>
           <Link href="/customer/appointments">
-            <Button variant="default" className="w-full justify-start bg-blue-600 hover:bg-blue-700">
+            <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
               <Calendar className="h-4 w-4 mr-2" />
               My Appointments
             </Button>
@@ -78,8 +97,6 @@ export default function CustomerLayout({
           </Button>
         </div>
       </div>
-
-      {/* Main Content */}
       <div className="ml-64 flex-1 p-8">
         {children}
       </div>
