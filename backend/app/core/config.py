@@ -12,6 +12,19 @@ def _split_csv(value: str) -> List[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
+def _cors_origins() -> List[str]:
+    configured = _split_csv(
+        os.getenv(
+            "CORS_ALLOWED_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000",
+        )
+    )
+    deployed_frontend = "https://salon-flow-frontend.vercel.app"
+    if deployed_frontend not in configured:
+        configured.append(deployed_frontend)
+    return configured
+
+
 _DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 
@@ -48,19 +61,16 @@ class Settings(BaseSettings):
     # CORS - comma-separated list of allowed origins, e.g.
     # "https://app.example.com,https://staging.example.com"
     # Defaults cover local dev and the deployed frontend. NEVER "*" with credentials.
-    CORS_ALLOWED_ORIGINS: Annotated[List[str], NoDecode] = _split_csv(
-        os.getenv(
-            "CORS_ALLOWED_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000,https://salon-flow-frontend.vercel.app",
-        )
-    )
+    CORS_ALLOWED_ORIGINS: Annotated[List[str], NoDecode] = _cors_origins()
 
     @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, value: str | List[str]) -> List[str]:
-        if isinstance(value, str):
-            return _split_csv(value)
-        return value
+        origins = _split_csv(value) if isinstance(value, str) else list(value)
+        deployed_frontend = "https://salon-flow-frontend.vercel.app"
+        if deployed_frontend not in origins:
+            origins.append(deployed_frontend)
+        return origins
 
     # ---- Session cookie (replaces returning the token in the JSON body) ----
     # The access token is now set as an httpOnly cookie, so client-side JS
