@@ -125,8 +125,8 @@ export default function StaffManagementPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-gray-600">Manage your salon staff members</p>
+          <h1 className="text-3xl font-bold text-stone-900">Staff Management</h1>
+          <p className="text-stone-600">Manage your salon staff members</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           if (!open) {
@@ -137,7 +137,7 @@ export default function StaffManagementPage() {
           setDialogOpen(open)
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-rose-600 hover:bg-rose-700">
               <Plus className="h-4 w-4 mr-2" />
               Add Staff
             </Button>
@@ -154,26 +154,26 @@ export default function StaffManagementPage() {
             )}
 
             {newStaffCredentials && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 space-y-2">
-                <p className="text-sm font-medium text-blue-800">Staff Credentials</p>
+              <div className="bg-rose-50 border border-rose-200 rounded-md p-4 space-y-2">
+                <p className="text-sm font-medium text-rose-800">Staff Credentials</p>
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Email:</span>
+                    <span className="text-stone-600">Email:</span>
                     <span className="font-medium">{newStaffCredentials.email}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Username:</span>
+                    <span className="text-stone-600">Username:</span>
                     <span className="font-medium">{newStaffCredentials.username}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Password:</span>
+                    <span className="text-stone-600">Password:</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium font-mono bg-gray-100 px-2 py-0.5 rounded text-sm">
+                      <span className="font-medium font-mono bg-stone-100 px-2 py-0.5 rounded text-sm">
                         {newStaffCredentials.password}
                       </span>
                       <button
                         onClick={() => copyToClipboard(newStaffCredentials.password)}
-                        className="text-blue-600 hover:text-blue-800"
+                        className="text-rose-600 hover:text-rose-800"
                         title="Copy password"
                       >
                         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -181,7 +181,7 @@ export default function StaffManagementPage() {
                     </div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-stone-500 mt-2">
                   Staff will receive an email to confirm their account.
                 </p>
               </div>
@@ -208,7 +208,7 @@ export default function StaffManagementPage() {
               <div>
                 <Label>Email *</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                   <Input
                     type="email"
                     placeholder="staff@salon.com"
@@ -218,13 +218,13 @@ export default function StaffManagementPage() {
                     required
                   />
                 </div>
-                <p className="text-xs text-gray-400">Confirmation email will be sent here</p>
+                <p className="text-xs text-stone-400">Confirmation email will be sent here</p>
               </div>
 
               <div>
                 <Label>Username (Optional)</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                   <Input
                     placeholder="staffname (auto-generated if empty)"
                     value={formData.username}
@@ -232,7 +232,7 @@ export default function StaffManagementPage() {
                     className="pl-10"
                   />
                 </div>
-                <p className="text-xs text-gray-400">Leave empty to auto-generate from name</p>
+                <p className="text-xs text-stone-400">Leave empty to auto-generate from name</p>
               </div>
 
               <div>
@@ -260,7 +260,7 @@ export default function StaffManagementPage() {
                 </select>
               </div>
 
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={creating}>
+              <Button type="submit" className="w-full bg-rose-600 hover:bg-rose-700" disabled={creating}>
                 {creating ? 'Creating...' : 'Add Staff'}
               </Button>
             </form>
@@ -286,13 +286,13 @@ export default function StaffManagementPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-stone-500">
                     Loading staff...
                   </TableCell>
                 </TableRow>
               ) : staff.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-stone-500">
                     No staff members yet. Add your first staff member!
                   </TableCell>
                 </TableRow>
@@ -301,12 +301,12 @@ export default function StaffManagementPage() {
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.full_name}</TableCell>
                     <TableCell>
-                      <span className="text-sm font-mono text-gray-600">@{s.username || '-'}</span>
+                      <span className="text-sm font-mono text-stone-600">@{s.username || '-'}</span>
                     </TableCell>
                     <TableCell>{s.email}</TableCell>
                     <TableCell>{s.phone || '-'}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="bg-gray-50">
+                      <Badge variant="outline" className="bg-stone-50">
                         {s.position || 'Staff'}
                       </Badge>
                     </TableCell>

@@ -7,26 +7,23 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // The session token now lives in an httpOnly cookie set by the backend
+  // (see CHANGES.md) rather than in localStorage, so it must be sent
+  // automatically with every request instead of attached manually via an
+  // Authorization header. This is what makes that possible for
+  // cross-origin requests (frontend and backend on different domains).
+  withCredentials: true,
 })
 
-// Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-
-// ✅ Handle 401 errors - clear storage and redirect to login
+// Handle 401 errors - clear any locally-cached (non-sensitive) user info
+// and redirect to login. The actual session cookie is cleared server-side
+// by /auth/logout, or simply expires/is already invalid by the time we get
+// a 401 here.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log('🔴 Token expired or invalid - logging out')
       localStorage.clear()
-      // ✅ Redirect to login page
       if (typeof window !== 'undefined') {
         window.location.href = '/auth/login'
       }
@@ -37,126 +34,139 @@ api.interceptors.response.use(
 
 // Auth API calls
 export const authApi = {
-  register: (data: any) => api.post('/auth/register', data),
-  login: (email: string, password: string) => 
+  // FIXED: this previously posted to '/auth/register', which does not
+  // exist on the backend (only '/auth/register-customer' and '/auth/staff'
+  // do) - self-registration always creates a customer account, by design;
+  // owner/staff accounts are provisioned separately (see backend
+  // database/owner_creation_script.md and the staff creation endpoint).
+  registerCustomer: (data: any) => api.post('/auth/register-customer', { ...data, role: 'customer' }),
+  login: (login: string, password: string) =>
     api.post('/auth/login', new URLSearchParams({
-      username: email,
+      username: login,
       password: password,
     }), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     }),
+  // The backend now sets/clears the session cookie itself, so logout is a
+  // real API call rather than a purely client-side "delete from
+  // localStorage" action (the frontend has no way to read or delete an
+  // httpOnly cookie directly).
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
 }
 
-
-
-// Add after authApi
 export const customersApi = {
-  // Get all customers
-  getAll: (params?: { search?: string; limit?: number; offset?: number }) => 
+  getAll: (params?: { search?: string; limit?: number; offset?: number }) =>
     api.get('/customers', { params }),
-  
-  // Get single customer
-  getOne: (id: string) => 
+  getOne: (id: string) =>
     api.get(`/customers/${id}`),
-  
-  // Create customer
-  create: (data: any) => 
+  create: (data: any) =>
     api.post('/customers', data),
-  
-  // Update customer
-  update: (id: string, data: any) => 
+  update: (id: string, data: any) =>
     api.put(`/customers/${id}`, data),
-  
-  // Delete customer
-  delete: (id: string) => 
+  delete: (id: string) =>
     api.delete(`/customers/${id}`),
-  
-  // Get customer stats
-  getStats: (id: string) => 
-    api.get(`/customers/${id}/stats`),
 }
 
-
-
-// Add after customersApi
 export const appointmentsApi = {
-  // Get all appointments
-  getAll: (params?: { start_date?: string; end_date?: string; status?: string; limit?: number }) => 
+  getAll: (params?: { start_date?: string; end_date?: string; status?: string; limit?: number }) =>
     api.get('/appointments', { params }),
-  
-  // Get today's appointments
-  getToday: () => 
-    api.get('/appointments/today'),
-  
-  // Get single appointment
-  getOne: (id: string) => 
+  getOne: (id: string) =>
     api.get(`/appointments/${id}`),
-  
-  // Create appointment
-  create: (data: any) => 
+  create: (data: any) =>
     api.post('/appointments', data),
-  
-  // Update appointment
-  update: (id: string, data: any) => 
+  update: (id: string, data: any) =>
     api.put(`/appointments/${id}`, data),
-  
-  // Update status
-  updateStatus: (id: string, status: string) => 
+  updateStatus: (id: string, status: string) =>
     api.patch(`/appointments/${id}/status`, null, { params: { status } }),
-  
-  // Delete appointment
-  delete: (id: string) => 
-    api.delete(`/appointments/${id}`),
-
-
-  getCustomerAppointments: () => 
+  approve: (id: string, data?: { new_date?: string; new_time?: string; reason?: string }) =>
+    api.patch(`/appointments/${id}/approve`, data || {}),
+  respond: (id: string, accept: boolean) =>
+    api.patch(`/appointments/${id}/respond`, { accept }),
+  getCustomerAppointments: () =>
     api.get('/appointments/customer/appointments'),
-
-  getByCustomer: (customerId: string) => 
+  getByCustomer: (customerId: string) =>
     api.get(`/appointments/by-customer/${customerId}`),
+  getNotifications: () =>
+    api.get('/appointments/notifications'),
+  markNotificationRead: (id: string) =>
+    api.patch(`/appointments/notifications/${id}/read`),
+  delete: (id: string) =>
+    api.delete(`/api/v1/appointments/${id}`),
+
 }
 
-
-
-
-// Add after appointmentsApi
 export const billingApi = {
-  // Get all invoices
-  getAll: (params?: { customer_id?: string; start_date?: string; end_date?: string }) => 
+  getAll: (params?: { customer_id?: string; start_date?: string; end_date?: string }) =>
     api.get('/billing/invoices', { params }),
-  
-  // Get single invoice
-  getOne: (id: string) => 
+  getOne: (id: string) =>
     api.get(`/billing/invoices/${id}`),
-  
-  // Create invoice
-  create: (data: any) => 
+  create: (data: any) =>
     api.post('/billing/invoices', data),
-  
-  // Delete invoice
-  delete: (id: string) => 
+  delete: (id: string) =>
     api.delete(`/billing/invoices/${id}`),
-  
-  // Get billing stats
-  getStats: (period?: string) => 
+  getStats: (period?: string) =>
     api.get('/billing/stats', { params: { period } }),
-
-    // Download PDF
-  downloadPDF: (id: string) => 
+  downloadPDF: (id: string) =>
     api.get(`/billing/invoices/${id}/pdf`, { responseType: 'blob' }),
-
-  printPDF: (id: string) => 
+  printPDF: (id: string) =>
     api.get(`/billing/invoices/${id}/print`, { responseType: 'blob' }),
-
-
-    // Add payment to invoice
   addPayment: (invoiceId: string, data: { amount: number; payment_method: string; payment_date?: string; notes?: string }) =>
     api.post(`/billing/invoices/${invoiceId}/payments`, data),
-
-  // Get payments for an invoice
   getPayments: (invoiceId: string) =>
     api.get(`/billing/invoices/${invoiceId}/payments`),
+  // Customer-scoped: a customer can only ever see their own invoices
+  // through these (separate, narrower) endpoints - not the salon-wide ones
+  // above, which require owner/staff.
+  getMyInvoices: (params?: { start_date?: string; end_date?: string }) =>
+    api.get('/billing/my-invoices', { params }),
+  getMyInvoice: (id: string) =>
+    api.get(`/billing/my-invoices/${id}`),
+  downloadMyInvoicePDF: (id: string) =>
+    api.get(`/billing/my-invoices/${id}/pdf`, { responseType: 'blob' }),
+}
 
+export const staffApi = {
+  getAll: () =>
+    api.get('/staff'),
+  create: (data: { email: string; full_name: string; phone?: string; position?: string; permissions?: Record<string, boolean> }) =>
+    api.post('/auth/staff', data),
+  update: (id: string, data: { position?: string; phone?: string; permissions?: Record<string, boolean>; is_active?: boolean }) =>
+    api.put(`/staff/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/staff/${id}`),
+}
+
+export const servicesApi = {
+  getAll: (activeOnly = false) =>
+    api.get('/services', { params: { active_only: activeOnly } }),
+  create: (data: { name: string; description?: string; duration: number; price: number; category?: string; is_active?: boolean }) =>
+    api.post('/services', data),
+  update: (id: string, data: Partial<{ name: string; description: string; duration: number; price: number; category: string; is_active: boolean }>) =>
+    api.put(`/services/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/services/${id}`),
+}
+
+export const feedbackApi = {
+  // Owner/staff: all feedback for the salon.
+  getAll: (serviceId?: string) =>
+    api.get('/feedback', { params: serviceId ? { service_id: serviceId } : {} }),
+  // Customer: feedback they've personally left.
+  getMine: () =>
+    api.get('/feedback/my-feedback'),
+  create: (data: { appointment_id: string; rating: number; comment?: string }) =>
+    api.post('/feedback', data),
+}
+
+export const salonsApi = {
+  setup: (data: any) =>
+    api.post('/salons/setup', data),
+  getMine: () =>
+    api.get('/salons/my-salon'),
+}
+
+export const dashboardApi = {
+  getStats: () =>
+    api.get('/dashboard/stats'),
 }

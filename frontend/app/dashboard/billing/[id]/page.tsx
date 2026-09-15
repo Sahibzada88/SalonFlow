@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,8 +21,9 @@ import {
 } from 'lucide-react'
 import { billingApi } from '@/services/api'
 
-export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
+export default function InvoiceDetailPage() {
   const router = useRouter()
+  const { id: invoiceId } = useParams<{ id: string }>()
   const [invoice, setInvoice] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
@@ -31,14 +32,14 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const [submittingPayment, setSubmittingPayment] = useState(false)
 
   useEffect(() => {
-    if (params.id) {
+    if (invoiceId) {
       fetchInvoice()
     }
-  }, [params.id])
+  }, [invoiceId])
 
   const fetchInvoice = async () => {
     try {
-      const response = await billingApi.getOne(params.id)
+      const response = await billingApi.getOne(invoiceId)
       setInvoice(response.data)
     } catch (error) {
       router.push('/dashboard/billing')
@@ -50,7 +51,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this invoice?')) return
     try {
-      await billingApi.delete(params.id)
+      await billingApi.delete(invoiceId)
       router.push('/dashboard/billing')
     } catch (error) {
       alert('Failed to delete invoice')
@@ -59,7 +60,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await billingApi.downloadPDF(params.id)
+      const response = await billingApi.downloadPDF(invoiceId)
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
@@ -74,7 +75,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
 
   const handlePrint = async () => {
     try {
-      const response = await billingApi.printPDF(params.id)
+      const response = await billingApi.printPDF(invoiceId)
       const blob = new Blob([response.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       window.open(url, '_blank')
@@ -95,7 +96,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     }
     setSubmittingPayment(true)
     try {
-      await billingApi.addPayment(params.id, {
+      await billingApi.addPayment(invoiceId, {
         amount: amount,
         payment_method: paymentMethod,
         payment_date: new Date().toISOString().split('T')[0]
@@ -114,7 +115,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
     const variants: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
-      partially_paid: 'bg-blue-100 text-blue-800',
+      partially_paid: 'bg-rose-100 text-rose-800',
       cancelled: 'bg-red-100 text-red-800',
     }
     return variants[status] || variants.pending
@@ -125,7 +126,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   }
 
   if (!invoice) {
-    return <div className="text-center py-8 text-gray-500">Invoice not found</div>
+    return <div className="text-center py-8 text-stone-500">Invoice not found</div>
   }
 
   return (
@@ -138,7 +139,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
               Back
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-stone-900">
             Invoice #{invoice.invoice_number}
           </h1>
           <Badge className={getStatusBadge(invoice.payment_status || invoice.status)}>
@@ -167,9 +168,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <User className="h-5 w-5 text-blue-600" />
+              <User className="h-5 w-5 text-rose-600" />
               <div>
-                <p className="text-sm text-gray-500">Customer</p>
+                <p className="text-sm text-stone-500">Customer</p>
                 <p className="font-medium">{invoice.customer_name || 'Unknown'}</p>
               </div>
             </div>
@@ -178,9 +179,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-blue-600" />
+              <Calendar className="h-5 w-5 text-rose-600" />
               <div>
-                <p className="text-sm text-gray-500">Date</p>
+                <p className="text-sm text-stone-500">Date</p>
                 <p className="font-medium">{invoice.date}</p>
               </div>
             </div>
@@ -191,7 +192,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             <div className="flex items-center gap-3">
               <DollarSign className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-gray-500">Amount Paid</p>
+                <p className="text-sm text-stone-500">Amount Paid</p>
                 <p className="font-medium text-green-600">Rs. {invoice.amount_paid?.toLocaleString() || 0}</p>
               </div>
             </div>
@@ -202,7 +203,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
             <div className="flex items-center gap-3">
               <DollarSign className="h-5 w-5 text-red-600" />
               <div>
-                <p className="text-sm text-gray-500">Balance Due</p>
+                <p className="text-sm text-stone-500">Balance Due</p>
                 <p className={`font-medium ${invoice.balance_due > 0 ? 'text-red-600' : 'text-green-600'}`}>
                   Rs. {invoice.balance_due?.toLocaleString() || 0}
                 </p>
@@ -239,7 +240,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-gray-500">
+                  <TableCell colSpan={4} className="text-center text-stone-500">
                     No items found
                   </TableCell>
                 </TableRow>
@@ -257,20 +258,20 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         <CardContent>
           <div className="space-y-2 max-w-sm ml-auto">
             <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal</span>
+              <span className="text-stone-600">Subtotal</span>
               <span>Rs. {invoice.subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Discount</span>
+              <span className="text-stone-600">Discount</span>
               <span>- Rs. {invoice.discount.toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Tax</span>
+              <span className="text-stone-600">Tax</span>
               <span>Rs. {invoice.tax.toLocaleString()}</span>
             </div>
             <div className="flex justify-between border-t pt-2 font-bold text-lg">
               <span>Total</span>
-              <span className="text-blue-600">Rs. {invoice.total.toLocaleString()}</span>
+              <span className="text-rose-600">Rs. {invoice.total.toLocaleString()}</span>
             </div>
           </div>
         </CardContent>
@@ -281,7 +282,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
         <div className="mt-6 flex justify-end">
           <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button className="bg-rose-600 hover:bg-rose-700">
                 Record Payment
               </Button>
             </DialogTrigger>
@@ -300,7 +301,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                     min="1"
                     max={invoice.balance_due}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Max: Rs. {invoice.balance_due}</p>
+                  <p className="text-xs text-stone-500 mt-1">Max: Rs. {invoice.balance_due}</p>
                 </div>
                 <div>
                   <Label>Payment Method</Label>
@@ -321,7 +322,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                   Cancel
                 </Button>
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700" 
+                  className="bg-rose-600 hover:bg-rose-700" 
                   onClick={handleRecordPayment}
                   disabled={submittingPayment}
                 >
@@ -345,9 +346,9 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
                 <div key={p.id} className="flex justify-between items-center border-b pb-2 last:border-0">
                   <div>
                     <p className="font-medium">Rs. {p.amount.toLocaleString()}</p>
-                    <p className="text-sm text-gray-500">{p.payment_method} - {p.payment_date}</p>
+                    <p className="text-sm text-stone-500">{p.payment_method} - {p.payment_date}</p>
                   </div>
-                  {p.notes && <p className="text-sm text-gray-400">{p.notes}</p>}
+                  {p.notes && <p className="text-sm text-stone-400">{p.notes}</p>}
                 </div>
               ))}
             </div>

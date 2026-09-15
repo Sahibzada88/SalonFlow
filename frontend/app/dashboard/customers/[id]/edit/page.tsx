@@ -69,7 +69,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
   if (fetching) {
     return (
       <div className="flex justify-center py-8">
-        <p className="text-gray-500">Loading customer...</p>
+        <p className="text-stone-500">Loading customer...</p>
       </div>
     )
   }
@@ -83,7 +83,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
             Back
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Edit Customer</h1>
+        <h1 className="text-3xl font-bold text-stone-900">Edit Customer</h1>
       </div>
 
       <Card>
@@ -151,7 +151,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
             <div className="flex gap-4 pt-4">
               <Button 
                 type="submit" 
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-rose-600 hover:bg-rose-700"
                 disabled={loading}
               >
                 {loading ? 'Updating...' : 'Update Customer'}

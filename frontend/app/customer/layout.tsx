@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Calendar, Home, LogOut, Scissors } from 'lucide-react'
-import { api } from '@/services/api'
+import { Calendar, Home, LogOut, Scissors, CalendarPlus, Receipt, Star } from 'lucide-react'
+import { api, authApi } from '@/services/api'
 
 export default function CustomerLayout({
   children,
@@ -13,34 +13,27 @@ export default function CustomerLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('access_token')
-      if (!token) {
-        router.push('/auth/login')
-        return
-      }
-
       try {
-        // ✅ Verify user role from backend
+        // See app/dashboard/layout.tsx - no client-side token pre-check
+        // anymore; the cookie isn't readable from JS, so /auth/me's 401
+        // (caught below) is what drives the redirect now.
         const response = await api.get('/auth/me')
         const userData = response.data
-        
-        // ✅ If not customer, redirect to dashboard
+
         if (userData.role !== 'customer') {
-          // Update localStorage with correct role
           localStorage.setItem('user_role', userData.role)
           router.push('/dashboard')
           return
         }
-        
-        // ✅ Ensure customer role is set
+
         localStorage.setItem('user_role', 'customer')
         setLoading(false)
       } catch (error) {
-        console.error('Auth check failed:', error)
         localStorage.clear()
         router.push('/auth/login')
       }
@@ -49,53 +42,83 @@ export default function CustomerLayout({
     checkAuth()
   }, [router])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Clears the httpOnly session cookie server-side - the frontend has
+      // no way to delete it directly.
+      await authApi.logout()
+    } catch (error) {
+      // Even if this call fails (e.g. network hiccup), still clear local
+      // UI state and send the user to login below.
+    }
     localStorage.clear()
     router.push('/auth/login')
   }
 
+  const appName = process.env.NEXT_PUBLIC_APP_NAME || 'SalonFlow'
+
+  const navItems = [
+    { href: '/customer/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/customer/appointments', label: 'My Appointments', icon: Calendar },
+    { href: '/customer/book', label: 'Book Appointment', icon: CalendarPlus },
+    { href: '/customer/invoices', label: 'My Invoices', icon: Receipt },
+    { href: '/customer/feedback', label: 'My Feedback', icon: Star },
+  ]
+
   if (loading) {
-    return <div className="flex justify-center py-8">Loading...</div>
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
+        <div className="h-10 w-10 rounded-xl salon-gradient flex items-center justify-center animate-pulse">
+          <Scissors className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <div className="fixed left-0 top-0 h-full w-64 bg-white border-r p-6">
-        <div className="flex items-center gap-2 mb-8">
-          <Scissors className="h-8 w-8 text-blue-600" />
-          <span className="text-xl font-bold text-gray-900">SalonFlow</span>
-          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Customer</span>
+    <div className="min-h-screen bg-background flex">
+      <div className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border p-6 flex flex-col">
+        <div className="flex items-center gap-2.5 mb-1">
+          <div className="h-9 w-9 rounded-xl salon-gradient flex items-center justify-center shrink-0">
+            <Scissors className="h-4.5 w-4.5 text-primary-foreground" />
+          </div>
+          <span className="text-xl font-serif font-semibold text-foreground">{appName}</span>
         </div>
-        <nav className="space-y-2">
-          <Link href="/customer/dashboard">
-            <Button variant="default" className="w-full justify-start bg-blue-600 hover:bg-blue-700">
-              <Home className="h-4 w-4 mr-2" />
-              Dashboard
-            </Button>
-          </Link>
-          <Link href="/customer/appointments">
-            <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
-              <Calendar className="h-4 w-4 mr-2" />
-              My Appointments
-            </Button>
-          </Link>
-          <Link href="/customer/book">
-            <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
-              <Calendar className="h-4 w-4 mr-2" />
-              Book Appointment
-            </Button>
-          </Link>
+        <span className="self-start text-[11px] font-medium tracking-wide uppercase bg-accent text-accent-foreground px-2.5 py-1 rounded-full mb-8 mt-3">
+          Customer
+        </span>
+
+        <nav className="flex-1 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href}>
+                <Button
+                  variant={isActive ? 'default' : 'ghost'}
+                  className={`w-full justify-start rounded-lg ${isActive ? 'shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  <Icon className="h-4 w-4 mr-2.5" />
+                  {item.label}
+                </Button>
+              </Link>
+            )
+          })}
         </nav>
-        <div className="absolute bottom-6 left-6 right-6">
-          <Button 
-            variant="ghost" 
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
+
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+          onClick={handleLogout}
+        >
+          <LogOut className="h-4 w-4 mr-2.5" />
+          Logout
+        </Button>
+
+        <p className="text-center text-[11px] text-muted-foreground mt-4">
+          Powered by {appName}
+        </p>
       </div>
       <div className="ml-64 flex-1 p-8">
         {children}

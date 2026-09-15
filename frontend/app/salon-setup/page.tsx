@@ -26,13 +26,10 @@ export default function SalonSetupPage() {
   })
 
   useEffect(() => {
-    // Check if user already has a salon
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      router.push('/auth/login')
-      return
-    }
-
+    // NOTE: previously gated on localStorage.getItem('access_token') -
+    // that's no longer readable from JS now that the session lives in an
+    // httpOnly cookie. If there's no valid session, /salons/my-salon below
+    // will 401 and the global axios interceptor redirects to /auth/login.
     api.get('/salons/my-salon')
       .then(response => {
         if (response.data.exists) {
@@ -69,11 +66,11 @@ export default function SalonSetupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 to-rose-50 p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Scissors className="h-12 w-12 text-blue-600" />
+            <Scissors className="h-12 w-12 text-rose-600" />
           </div>
           <CardTitle className="text-2xl">Set Up Your Salon</CardTitle>
           <CardDescription>
@@ -160,7 +157,7 @@ export default function SalonSetupPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            <Button type="submit" className="w-full bg-rose-600 hover:bg-rose-700" disabled={loading}>
               {loading ? 'Setting Up...' : 'Complete Setup'}
             </Button>
           </form>

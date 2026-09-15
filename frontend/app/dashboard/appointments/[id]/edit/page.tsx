@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,8 +23,9 @@ import {
 import { appointmentsApi } from '@/services/api'
 import { customersApi } from '@/services/api'
 
-export default function EditAppointmentPage({ params }: { params: { id: string } }) {
+export default function EditAppointmentPage() {
   const router = useRouter()
+  const { id: appointmentId } = useParams<{ id: string }>()
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
@@ -40,10 +41,10 @@ export default function EditAppointmentPage({ params }: { params: { id: string }
   })
 
   useEffect(() => {
-    if (params.id) {
+    if (appointmentId) {
       fetchData()
     }
-  }, [params.id])
+  }, [appointmentId])
 
   const fetchData = async () => {
     try {
@@ -52,7 +53,7 @@ export default function EditAppointmentPage({ params }: { params: { id: string }
       setCustomers(customersRes.data)
 
       // Fetch appointment
-      const aptRes = await appointmentsApi.getOne(params.id)
+      const aptRes = await appointmentsApi.getOne(appointmentId)
       const apt = aptRes.data
       setFormData({
         customer_id: apt.customer_id || '',
@@ -76,8 +77,8 @@ export default function EditAppointmentPage({ params }: { params: { id: string }
     setError('')
 
     try {
-      await appointmentsApi.update(params.id, formData)
-      router.push(`/dashboard/appointments/${params.id}`)
+      await appointmentsApi.update(appointmentId, formData)
+      router.push(`/dashboard/appointments/${appointmentId}`)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update appointment')
     } finally {
@@ -87,40 +88,40 @@ export default function EditAppointmentPage({ params }: { params: { id: string }
 
   if (fetching) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-stone-50">
         <p>Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-stone-50 flex">
       {/* Sidebar */}
       <div className="fixed left-0 top-0 h-full w-64 bg-white border-r p-6">
         <div className="flex items-center gap-2 mb-8">
-          <Scissors className="h-8 w-8 text-blue-600" />
-          <span className="text-xl font-bold text-gray-900">SalonFlow</span>
+          <Scissors className="h-8 w-8 text-rose-600" />
+          <span className="text-xl font-bold text-stone-900">SalonFlow</span>
         </div>
         <nav className="space-y-2">
           <Link href="/dashboard">
-            <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
+            <Button variant="ghost" className="w-full justify-start hover:bg-stone-100">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
           </Link>
           <Link href="/dashboard/customers">
-            <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
+            <Button variant="ghost" className="w-full justify-start hover:bg-stone-100">
               <Users className="h-4 w-4 mr-2" />
               Customers
             </Button>
           </Link>
           <Link href="/dashboard/appointments">
-            <Button variant="default" className="w-full justify-start bg-blue-600 hover:bg-blue-700">
+            <Button variant="default" className="w-full justify-start bg-rose-600 hover:bg-rose-700">
               <Calendar className="h-4 w-4 mr-2" />
               Appointments
             </Button>
           </Link>
-          <Button variant="ghost" className="w-full justify-start hover:bg-gray-100">
+          <Button variant="ghost" className="w-full justify-start hover:bg-stone-100">
             <CreditCard className="h-4 w-4 mr-2" />
             Billing
           </Button>
@@ -130,13 +131,13 @@ export default function EditAppointmentPage({ params }: { params: { id: string }
       {/* Main Content */}
       <div className="ml-64 flex-1 p-8 max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <Link href={`/dashboard/appointments/${params.id}`}>
+          <Link href={`/dashboard/appointments/${appointmentId}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Edit Appointment</h1>
+          <h1 className="text-3xl font-bold text-stone-900">Edit Appointment</h1>
         </div>
 
         <Card>
@@ -234,12 +235,12 @@ export default function EditAppointmentPage({ params }: { params: { id: string }
               <div className="flex gap-4 pt-4">
                 <Button 
                   type="submit" 
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-rose-600 hover:bg-rose-700"
                   disabled={loading}
                 >
                   {loading ? 'Updating...' : 'Update Appointment'}
                 </Button>
-                <Link href={`/dashboard/appointments/${params.id}`}>
+                <Link href={`/dashboard/appointments/${appointmentId}`}>
                   <Button variant="outline">Cancel</Button>
                 </Link>
               </div>

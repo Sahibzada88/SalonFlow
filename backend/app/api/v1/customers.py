@@ -1,10 +1,25 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional
+
 from app.core.supabase_client import supabase_client
-from app.api.v1.auth import oauth2_scheme
+from app.core.auth_deps import require_roles, UserContext
+from app.core.logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
+
+# Every route in this file is owner/staff only. In the original code these
+# routes resolved "salon" by looking up `salons.owner_id = current_user`
+# ONLY - which meant staff accounts got an empty list / 400 "no salon found"
+# even though they should have full access, and there was no role check at
+# all preventing a *customer* token from working here (a customer also maps
+# to a salon_id via a different helper used elsewhere, which is exactly the
+# kind of inconsistency that led to the data-exposure issue). Both are fixed
+# by requiring role in ("owner", "staff") up front, and reading salon scope
+# from ctx.salon_id (resolved once, correctly, per role, in auth_deps.py).
+_staff_or_owner = require_roles("owner", "staff")
+
 
 class CustomerCreate(BaseModel):
     full_name: str
@@ -13,202 +28,99 @@ class CustomerCreate(BaseModel):
     address: Optional[str] = None
     notes: Optional[str] = None
 
-# ============================================
-# GET ALL CUSTOMERS
-# ============================================
+
 @router.get("/")
 async def get_customers(
-    token: str = Depends(oauth2_scheme),
+    ctx: UserContext = Depends(_staff_or_owner),
     search: Optional[str] = None,
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
 ):
-    try:
-        user = supabase_client.auth.get_user(token)
-        if user.user is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        salon_response = supabase_client.table("salons")\
-            .select("id")\
-            .eq("owner_id", user.user.id)\
-            .execute()
-        
-        if not salon_response.data:
-            return []
-        
-        salon_id = salon_response.data[0]["id"]
-        
-        result = supabase_client.rpc(
-            "get_customers",
-            {
-                "p_salon_id": salon_id,
-                "p_search": search,
-                "p_limit": limit,
-                "p_offset": offset
-            }
-        ).execute()
-        
-        return result.data if result.data else []
-        
-    except Exception as e:
-        print(f"Get customers error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    if not ctx.salon_id:
+        return []
 
-# ============================================
-# CREATE CUSTOMER
-# ============================================
+    result = supabase_client.rpc(
+        "get_customers",
+        {"p_salon_id": ctx.salon_id, "p_search": search, "p_limit": limit, "p_offset": offset},
+    ).execute()
+
+    return result.data if result.data else []
+
+
 @router.post("/")
-async def create_customer(customer_data: CustomerCreate, token: str = Depends(oauth2_scheme)):
-    try:
-        user = supabase_client.auth.get_user(token)
-        if user.user is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        salon_response = supabase_client.table("salons")\
-            .select("id")\
-            .eq("owner_id", user.user.id)\
-            .execute()
-        
-        if not salon_response.data:
-            raise HTTPException(status_code=400, detail="No salon found")
-        
-        salon_id = salon_response.data[0]["id"]
-        
-        result = supabase_client.rpc(
-            "upsert_customer",
-            {
-                "p_salon_id": salon_id,
-                "p_full_name": customer_data.full_name,
-                "p_email": customer_data.email,
-                "p_phone": customer_data.phone,
-                "p_address": customer_data.address,
-                "p_notes": customer_data.notes
-            }
-        ).execute()
-        
-        return result.data
-        
-    except Exception as e:
-        print(f"Create customer error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+async def create_customer(customer_data: CustomerCreate, ctx: UserContext = Depends(_staff_or_owner)):
+    if not ctx.salon_id:
+        raise HTTPException(status_code=400, detail="No salon found")
 
-# ============================================
-# GET SINGLE CUSTOMER (FIXED)
-# ============================================
+    result = supabase_client.rpc(
+        "upsert_customer",
+        {
+            "p_salon_id": ctx.salon_id,
+            "p_full_name": customer_data.full_name,
+            "p_email": customer_data.email,
+            "p_phone": customer_data.phone,
+            "p_address": customer_data.address,
+            "p_notes": customer_data.notes,
+        },
+    ).execute()
+
+    return result.data
+
+
 @router.get("/{customer_id}")
-async def get_customer(customer_id: str, token: str = Depends(oauth2_scheme)):
-    """Get a single customer by ID"""
-    try:
-        user = supabase_client.auth.get_user(token)
-        if user.user is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        salon_response = supabase_client.table("salons")\
-            .select("id")\
-            .eq("owner_id", user.user.id)\
-            .execute()
-        
-        if not salon_response.data:
-            raise HTTPException(status_code=404, detail="Customer not found")
-        
-        salon_id = salon_response.data[0]["id"]
-        
-        # Use the stored procedure to get all customers and filter by ID
-        result = supabase_client.rpc(
-            "get_customers",
-            {
-                "p_salon_id": salon_id,
-                "p_limit": 100
-            }
-        ).execute()
-        
-        # Find the customer by ID
-        if result.data:
-            for customer in result.data:
-                if customer.get("id") == customer_id:
-                    return customer
-        
+async def get_customer(customer_id: str, ctx: UserContext = Depends(_staff_or_owner)):
+    """Get a single customer by ID."""
+    if not ctx.salon_id:
         raise HTTPException(status_code=404, detail="Customer not found")
-        
-    except Exception as e:
-        print(f"Get customer error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
 
-# ============================================
-# UPDATE CUSTOMER
-# ============================================
+    result = supabase_client.rpc(
+        "get_customers", {"p_salon_id": ctx.salon_id, "p_limit": 100}
+    ).execute()
+
+    if result.data:
+        for customer in result.data:
+            if customer.get("id") == customer_id:
+                return customer
+
+    raise HTTPException(status_code=404, detail="Customer not found")
+
+
 @router.put("/{customer_id}")
-async def update_customer(customer_id: str, customer_data: CustomerCreate, token: str = Depends(oauth2_scheme)):
-    try:
-        user = supabase_client.auth.get_user(token)
-        if user.user is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        salon_response = supabase_client.table("salons")\
-            .select("id")\
-            .eq("owner_id", user.user.id)\
-            .execute()
-        
-        if not salon_response.data:
-            raise HTTPException(status_code=400, detail="No salon found")
-        
-        salon_id = salon_response.data[0]["id"]
-        
-        result = supabase_client.rpc(
-            "upsert_customer",
-            {
-                "p_salon_id": salon_id,
-                "p_id": customer_id,
-                "p_full_name": customer_data.full_name,
-                "p_email": customer_data.email,
-                "p_phone": customer_data.phone,
-                "p_address": customer_data.address,
-                "p_notes": customer_data.notes
-            }
-        ).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=404, detail="Customer not found")
-        
-        return result.data
-        
-    except Exception as e:
-        print(f"Update customer error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+async def update_customer(
+    customer_id: str, customer_data: CustomerCreate, ctx: UserContext = Depends(_staff_or_owner)
+):
+    if not ctx.salon_id:
+        raise HTTPException(status_code=400, detail="No salon found")
 
-# ============================================
-# DELETE CUSTOMER
-# ============================================
+    result = supabase_client.rpc(
+        "upsert_customer",
+        {
+            "p_salon_id": ctx.salon_id,
+            "p_id": customer_id,
+            "p_full_name": customer_data.full_name,
+            "p_email": customer_data.email,
+            "p_phone": customer_data.phone,
+            "p_address": customer_data.address,
+            "p_notes": customer_data.notes,
+        },
+    ).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    return result.data
+
+
 @router.delete("/{customer_id}")
-async def delete_customer(customer_id: str, token: str = Depends(oauth2_scheme)):
-    try:
-        user = supabase_client.auth.get_user(token)
-        if user.user is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        salon_response = supabase_client.table("salons")\
-            .select("id")\
-            .eq("owner_id", user.user.id)\
-            .execute()
-        
-        if not salon_response.data:
-            raise HTTPException(status_code=404, detail="Customer not found")
-        
-        salon_id = salon_response.data[0]["id"]
-        
-        result = supabase_client.rpc(
-            "delete_customer",
-            {
-                "p_salon_id": salon_id,
-                "p_customer_id": customer_id
-            }
-        ).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=404, detail="Customer not found")
-        
-        return {"message": "Customer deleted successfully"}
-        
-    except Exception as e:
-        print(f"Delete customer error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+async def delete_customer(customer_id: str, ctx: UserContext = Depends(_staff_or_owner)):
+    if not ctx.salon_id:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    result = supabase_client.rpc(
+        "delete_customer", {"p_salon_id": ctx.salon_id, "p_customer_id": customer_id}
+    ).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    return {"message": "Customer deleted successfully"}

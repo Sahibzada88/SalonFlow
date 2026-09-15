@@ -100,7 +100,8 @@ export default function NewInvoicePage() {
             items: [{ description: title, quantity: 1, unit_price: 0 }]
           }))
         } catch (e) {
-          console.log('Appointment not found')
+          // Appointment not found / not linked - fine, the form just
+          // starts blank instead of pre-filled.
         }
       }
     } catch (error) {
@@ -201,7 +202,7 @@ export default function NewInvoicePage() {
   }
 
   if (loadingData) {
-    return <div className="flex justify-center py-8"><p className="text-gray-500">Loading...</p></div>
+    return <div className="flex justify-center py-8"><p className="text-stone-500">Loading...</p></div>
   }
 
   return (
@@ -213,7 +214,7 @@ export default function NewInvoicePage() {
             Back
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">New Invoice</h1>
+        <h1 className="text-3xl font-bold text-stone-900">New Invoice</h1>
         {appointment && (
           <span className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded-full">
             ✅ From: {appointment.title}
@@ -223,23 +224,23 @@ export default function NewInvoicePage() {
 
       {/* ✅ Pre-filled Appointment Info */}
       {appointment && selectedCustomer && (
-        <Card className="mb-6 bg-blue-50 border-blue-200">
+        <Card className="mb-6 bg-rose-50 border-rose-200">
           <CardContent className="p-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-blue-600" />
+                <User className="h-4 w-4 text-rose-600" />
                 <span className="font-medium">{selectedCustomer.full_name}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
+                <Calendar className="h-4 w-4 text-rose-600" />
                 <span>{appointment.date}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
+                <Clock className="h-4 w-4 text-rose-600" />
                 <span>{appointment.start_time} - {appointment.end_time}</span>
               </div>
               <div>
-                <span className="text-gray-500">Service:</span>
+                <span className="text-stone-500">Service:</span>
                 <span className="font-medium ml-1">{appointment.title}</span>
               </div>
             </div>
@@ -408,7 +409,7 @@ export default function NewInvoicePage() {
                   type="number"
                   value={formData.subtotal}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-stone-50"
                 />
               </div>
               <div className="space-y-2">
@@ -433,7 +434,7 @@ export default function NewInvoicePage() {
             <div className="mt-4 pt-4 border-t">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold">Total</span>
-                <span className="text-2xl font-bold text-blue-600">
+                <span className="text-2xl font-bold text-rose-600">
                   Rs. {formData.total.toLocaleString()}
                 </span>
               </div>
@@ -460,7 +461,7 @@ export default function NewInvoicePage() {
         <div className="flex gap-4">
           <Button 
             type="submit" 
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-rose-600 hover:bg-rose-700"
             disabled={loading}
           >
             {loading ? 'Creating...' : 'Create Invoice'}

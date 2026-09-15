@@ -36,7 +36,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <p className="text-gray-500">Loading customer...</p>
+        <p className="text-stone-500">Loading customer...</p>
       </div>
     )
   }
@@ -44,7 +44,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   if (!customer) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">Customer not found</p>
+        <p className="text-stone-500">Customer not found</p>
         <Link href="/dashboard/customers">
           <Button variant="outline" className="mt-4">Go Back</Button>
         </Link>
@@ -61,7 +61,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             Back
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">{customer.full_name}</h1>
+        <h1 className="text-3xl font-bold text-stone-900">{customer.full_name}</h1>
         <Link href={`/dashboard/customers/${customer.id}/edit`} className="ml-auto">
           <Button variant="outline">
             <Edit className="h-4 w-4 mr-2" />
@@ -75,11 +75,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Calendar className="h-6 w-6 text-blue-600" />
+              <div className="bg-rose-100 p-3 rounded-full">
+                <Calendar className="h-6 w-6 text-rose-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Visits</p>
+                <p className="text-sm text-stone-600">Total Visits</p>
                 <p className="text-2xl font-bold">{customer.total_visits || 0}</p>
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
                 <DollarSign className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Total Spent</p>
+                <p className="text-sm text-stone-600">Total Spent</p>
                 <p className="text-2xl font-bold">Rs. {customer.total_spent?.toLocaleString() || 0}</p>
               </div>
             </div>
@@ -103,13 +103,13 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="bg-purple-100 p-3 rounded-full">
+              <div className="bg-fuchsia-100 p-3 rounded-full">
                 <Badge variant="secondary" className="text-lg">
                   {customer.last_visit ? 'Active' : 'New'}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Last Visit</p>
+                <p className="text-sm text-stone-600">Last Visit</p>
                 <p className="text-sm font-medium">
                   {customer.last_visit ? new Date(customer.last_visit).toLocaleDateString() : 'Never'}
                 </p>
@@ -128,24 +128,24 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
           <CardContent className="space-y-4">
             {customer.email && (
               <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-gray-500" />
+                <Mail className="h-4 w-4 text-stone-500" />
                 <span>{customer.email}</span>
               </div>
             )}
             {customer.phone && (
               <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-gray-500" />
+                <Phone className="h-4 w-4 text-stone-500" />
                 <span>{customer.phone}</span>
               </div>
             )}
             {customer.address && (
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-gray-500" />
+                <MapPin className="h-4 w-4 text-stone-500" />
                 <span>{customer.address}</span>
               </div>
             )}
             {!customer.email && !customer.phone && !customer.address && (
-              <p className="text-gray-500">No contact information available</p>
+              <p className="text-stone-500">No contact information available</p>
             )}
           </CardContent>
         </Card>
@@ -155,7 +155,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
             <CardTitle>Notes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-700">
+            <p className="text-stone-700">
               {customer.notes || 'No notes available for this customer.'}
             </p>
           </CardContent>

@@ -104,7 +104,7 @@ export default function BillingPage() {
     const variants: Record<string, string> = {
       paid: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
-      partially_paid: 'bg-blue-100 text-blue-800',
+      partially_paid: 'bg-rose-100 text-rose-800',
       cancelled: 'bg-red-100 text-red-800',
     }
     return variants[status] || variants.pending
@@ -130,11 +130,11 @@ export default function BillingPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Billing</h1>
-          <p className="text-gray-600">Manage invoices and payments</p>
+          <h1 className="text-3xl font-bold text-stone-900">Billing</h1>
+          <p className="text-stone-600">Manage invoices and payments</p>
         </div>
         <Link href="/dashboard/billing/new">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-rose-600 hover:bg-rose-700">
             <Plus className="h-4 w-4 mr-2" />
             New Invoice
           </Button>
@@ -145,7 +145,7 @@ export default function BillingPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-stone-600">Total Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -155,8 +155,8 @@ export default function BillingPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Invoices</CardTitle>
-            <FileText className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-stone-600">Total Invoices</CardTitle>
+            <FileText className="h-4 w-4 text-rose-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(stats.total_invoices)}</div>
@@ -165,8 +165,8 @@ export default function BillingPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Average Invoice</CardTitle>
-            <DollarSign className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-stone-600">Average Invoice</CardTitle>
+            <DollarSign className="h-4 w-4 text-fuchsia-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Rs. {formatCurrency(roundValue(stats.average_invoice))}</div>
@@ -209,13 +209,13 @@ export default function BillingPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-stone-500">
                     Loading invoices...
                   </TableCell>
                 </TableRow>
               ) : filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-stone-500">
                     No invoices found. Create your first invoice!
                   </TableCell>
                 </TableRow>

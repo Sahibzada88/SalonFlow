@@ -48,7 +48,7 @@ export default function NewCustomerPage() {
             Back
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Add New Customer</h1>
+        <h1 className="text-3xl font-bold text-stone-900">Add New Customer</h1>
       </div>
 
       <Card>
@@ -116,7 +116,7 @@ export default function NewCustomerPage() {
             <div className="flex gap-4 pt-4">
               <Button 
                 type="submit" 
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-rose-600 hover:bg-rose-700"
                 disabled={loading}
               >
                 {loading ? 'Creating...' : 'Create Customer'}

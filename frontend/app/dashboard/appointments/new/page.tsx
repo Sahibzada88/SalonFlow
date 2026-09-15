@@ -121,7 +121,7 @@ export default function NewAppointmentPage() {
             Back
           </Button>
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900">New Appointment</h1>
+        <h1 className="text-3xl font-bold text-stone-900">New Appointment</h1>
       </div>
 
       <Card>
@@ -165,7 +165,7 @@ export default function NewAppointmentPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="border p-4 rounded-md space-y-3 bg-gray-50">
+                <div className="border p-4 rounded-md space-y-3 bg-stone-50">
                   <div className="grid grid-cols-3 gap-3">
                     <Input
                       placeholder="Full Name *"
@@ -187,7 +187,7 @@ export default function NewAppointmentPage() {
                     <Button 
                       type="button" 
                       size="sm" 
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-rose-600 hover:bg-rose-700"
                       onClick={createCustomerAndSelect}
                       disabled={creatingCustomer}
                     >
@@ -205,7 +205,7 @@ export default function NewAppointmentPage() {
                       Cancel
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-stone-400">
                     Customer will be created and automatically selected
                   </p>
                 </div>
@@ -281,7 +281,7 @@ export default function NewAppointmentPage() {
             <div className="flex gap-4 pt-4">
               <Button 
                 type="submit" 
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-rose-600 hover:bg-rose-700"
                 disabled={loading}
               >
                 {loading ? 'Creating...' : 'Book Appointment'}

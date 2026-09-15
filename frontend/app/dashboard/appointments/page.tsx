@@ -75,13 +75,13 @@ export default function AppointmentsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
-      scheduled: { className: 'bg-blue-100 text-blue-800', label: 'Scheduled' },
+      scheduled: { className: 'bg-rose-100 text-rose-800', label: 'Scheduled' },
       requested: { className: 'bg-yellow-100 text-yellow-800', label: '⏳ Pending' },
       approved: { className: 'bg-green-100 text-green-800', label: '✅ Approved' },
-      completed: { className: 'bg-gray-100 text-gray-800', label: 'Completed' },
+      completed: { className: 'bg-stone-100 text-stone-800', label: 'Completed' },
       cancelled: { className: 'bg-red-100 text-red-800', label: 'Cancelled' },
-      'no-show': { className: 'bg-gray-100 text-gray-800', label: 'No Show' },
-      rescheduled_pending: { className: 'bg-purple-100 text-purple-800', label: '⏳ Reschedule Pending' },
+      'no-show': { className: 'bg-stone-100 text-stone-800', label: 'No Show' },
+      rescheduled_pending: { className: 'bg-fuchsia-100 text-fuchsia-800', label: '⏳ Reschedule Pending' },
     }
     const variant = variants[status] || variants.scheduled
     return (
@@ -147,7 +147,7 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-3">
             Appointments
             {pendingCount > 0 && (
               <Badge className="bg-red-500 text-white hover:bg-red-600 px-3 py-1 text-sm">
@@ -155,10 +155,10 @@ export default function AppointmentsPage() {
               </Badge>
             )}
           </h1>
-          <p className="text-sm text-gray-500">Manage your salon appointments</p>
+          <p className="text-sm text-stone-500">Manage your salon appointments</p>
         </div>
         <Link href="/dashboard/appointments/new">
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-9">
+          <Button size="sm" className="bg-rose-600 hover:bg-rose-700 h-9">
             <Plus className="h-4 w-4 mr-1.5" />
             New Appointment
           </Button>
@@ -168,7 +168,7 @@ export default function AppointmentsPage() {
       {/* Search and Filter */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
           <Input
             placeholder="Search by customer or service..."
             value={search}
@@ -221,19 +221,19 @@ export default function AppointmentsPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">
+                <TableHead className="text-xs font-medium text-stone-500 uppercase tracking-wider py-3 px-4">
                   Date & Time
                 </TableHead>
-                <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">
+                <TableHead className="text-xs font-medium text-stone-500 uppercase tracking-wider py-3 px-4">
                   Customer
                 </TableHead>
-                <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">
+                <TableHead className="text-xs font-medium text-stone-500 uppercase tracking-wider py-3 px-4">
                   Service
                 </TableHead>
-                <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4">
+                <TableHead className="text-xs font-medium text-stone-500 uppercase tracking-wider py-3 px-4">
                   Status
                 </TableHead>
-                <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider py-3 px-4 text-right">
+                <TableHead className="text-xs font-medium text-stone-500 uppercase tracking-wider py-3 px-4 text-right">
                   Actions
                 </TableHead>
               </TableRow>
@@ -241,33 +241,33 @@ export default function AppointmentsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500 text-sm">
+                  <TableCell colSpan={5} className="text-center py-8 text-stone-500 text-sm">
                     Loading appointments...
                   </TableCell>
                 </TableRow>
               ) : filteredAppointments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500 text-sm">
+                  <TableCell colSpan={5} className="text-center py-8 text-stone-500 text-sm">
                     No appointments found. Book your first appointment!
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredAppointments.map((apt: any) => (
-                  <TableRow key={apt.id} className="hover:bg-gray-50">
+                  <TableRow key={apt.id} className="hover:bg-stone-50">
                     <TableCell className="py-3 px-4">
-                      <div className="text-sm font-medium text-gray-900">{apt.date}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-sm font-medium text-stone-900">{apt.date}</div>
+                      <div className="text-xs text-stone-500">
                         <Clock className="h-3 w-3 inline mr-1" />
                         {apt.start_time} - {apt.end_time}
                       </div>
                     </TableCell>
                     <TableCell className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <User className="h-3.5 w-3.5 text-gray-400" />
-                        <span className="text-sm text-gray-900">{apt.customer_name || 'Unknown'}</span>
+                        <User className="h-3.5 w-3.5 text-stone-400" />
+                        <span className="text-sm text-stone-900">{apt.customer_name || 'Unknown'}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="py-3 px-4 text-sm text-gray-900">
+                    <TableCell className="py-3 px-4 text-sm text-stone-900">
                       {apt.service_name || apt.title || '-'}
                     </TableCell>
                     <TableCell className="py-3 px-4">
@@ -303,7 +303,7 @@ export default function AppointmentsPage() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                            className="h-8 w-8 p-0 text-stone-500 hover:text-rose-600 hover:bg-rose-50"
                             title="View"
                           >
                             <Eye className="h-4 w-4" />
@@ -313,7 +313,7 @@ export default function AppointmentsPage() {
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50"
+                            className="h-8 w-8 p-0 text-stone-500 hover:text-rose-600 hover:bg-rose-50"
                             title="Edit"
                           >
                             <Edit className="h-4 w-4" />
@@ -323,7 +323,7 @@ export default function AppointmentsPage() {
                           variant="ghost" 
                           size="sm"
                           onClick={() => handleDelete(apt.id)}
-                          className="h-8 w-8 p-0 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                          className="h-8 w-8 p-0 text-stone-500 hover:text-red-600 hover:bg-red-50"
                           title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -29,20 +29,16 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token')
+    // NOTE: previously checked localStorage.getItem('access_token') before
+    // fetching - that's no longer possible now that the session lives in
+    // an httpOnly cookie the JS can't read. DashboardLayout (the parent)
+    // already verified auth via /auth/me before rendering this page at
+    // all, and any 401 here is caught below / by the global axios
+    // interceptor, so no client-side token check is needed.
     const role = localStorage.getItem('user_role')
-    if (!token) {
-      router.push('/auth/login')
-      return
-    }
     setUserRole(role || '')
     fetchDashboardData()
   }, [router])
-
-  useEffect(() => {
-    console.log('🔍 Customer Dashboard - User Role:', localStorage.getItem('user_role'))
-    console.log('🔍 Customer Dashboard - User ID:', localStorage.getItem('user_id'))
-  }, [])
 
   const fetchDashboardData = async () => {
     try {
@@ -66,17 +62,19 @@ export default function DashboardPage() {
       setLoading(false)
     } catch (error) {
       console.error(error)
-      localStorage.removeItem('access_token')
+      // The session cookie itself is cleared server-side / by the global
+      // 401 interceptor in services/api.ts - nothing to remove from
+      // localStorage here anymore.
       router.push('/auth/login')
     }
   }
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, string> = {
-      scheduled: 'bg-blue-100 text-blue-800',
+      scheduled: 'bg-rose-100 text-rose-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
-      'no-show': 'bg-gray-100 text-gray-800',
+      'no-show': 'bg-stone-100 text-stone-800',
     }
     return variants[status] || variants.scheduled
   }
@@ -89,13 +87,13 @@ export default function DashboardPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-stone-900">Dashboard</h1>
+          <p className="text-stone-600">
             Welcome to {salon?.name || 'your salon'}! Here's what's happening today
           </p>
         </div>
         <Link href="/dashboard/customers/new">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-rose-600 hover:bg-rose-700">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
@@ -106,7 +104,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Today's Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-stone-600">Today's Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -116,8 +114,8 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Today's Appointments</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-stone-600">Today's Appointments</CardTitle>
+            <Calendar className="h-4 w-4 text-rose-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.todayAppointments}</div>
@@ -126,8 +124,8 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-stone-600">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-fuchsia-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalCustomers}</div>
@@ -136,12 +134,12 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium text-gray-600">Upcoming</CardTitle>
+            <CardTitle className="text-sm font-medium text-stone-600">Upcoming</CardTitle>
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.upcomingAppointments}</div>
-            <p className="text-sm text-gray-500 mt-1 truncate">
+            <p className="text-sm text-stone-500 mt-1 truncate">
               {stats.nextAppointment ? `Next: ${stats.nextAppointment}` : 'No upcoming'}
             </p>
           </CardContent>
@@ -156,13 +154,13 @@ export default function DashboardPage() {
         <CardContent>
           <div className="space-y-4">
             {recentAppointments.length === 0 ? (
-              <p className="text-gray-500">No appointments yet.</p>
+              <p className="text-stone-500">No appointments yet.</p>
             ) : (
               recentAppointments.map((apt: any) => (
                 <div key={apt.id} className="flex items-center justify-between border-b pb-4 last:border-0">
                   <div>
                     <p className="font-medium">{apt.customer_name}</p>
-                    <p className="text-sm text-gray-600">{apt.title}</p>
+                    <p className="text-sm text-stone-600">{apt.title}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{apt.start_time}</p>

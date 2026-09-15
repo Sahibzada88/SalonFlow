@@ -33,7 +33,6 @@ export default function CustomersPage() {
     try {
       setLoading(true)
       const response = await customersApi.getAll(searchTerm ? { search: searchTerm } : {})
-      console.log('📊 Customers Response:', response.data)
       setCustomers(response.data || [])
     } catch (error) {
       console.error('Failed to fetch customers:', error)
@@ -62,7 +61,7 @@ export default function CustomersPage() {
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <p className="text-gray-500">Loading customers...</p>
+        <p className="text-stone-500">Loading customers...</p>
       </div>
     )
   }
@@ -71,11 +70,11 @@ export default function CustomersPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-          <p className="text-gray-600">Manage your salon customers</p>
+          <h1 className="text-3xl font-bold text-stone-900">Customers</h1>
+          <p className="text-stone-600">Manage your salon customers</p>
         </div>
         <Link href="/dashboard/customers/new">
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-rose-600 hover:bg-rose-700">
             <Plus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
@@ -130,7 +129,7 @@ export default function CustomersPage() {
             <TableBody>
               {customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-stone-500">
                     No customers found. Add your first customer!
                   </TableCell>
                 </TableRow>
