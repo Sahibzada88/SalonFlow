@@ -47,9 +47,12 @@ class Settings(BaseSettings):
 
     # CORS - comma-separated list of allowed origins, e.g.
     # "https://app.example.com,https://staging.example.com"
-    # Defaults to localhost for local dev only. NEVER "*" with credentials.
+    # Defaults cover local dev and the deployed frontend. NEVER "*" with credentials.
     CORS_ALLOWED_ORIGINS: Annotated[List[str], NoDecode] = _split_csv(
-        os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+        os.getenv(
+            "CORS_ALLOWED_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000,https://salon-flow-frontend.vercel.app",
+        )
     )
 
     @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
