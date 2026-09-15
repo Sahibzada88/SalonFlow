@@ -110,7 +110,7 @@ async def create_invoice(invoice_data: InvoiceCreate, ctx: UserContext = Depends
     if invoice_data.appointment_id:
         appointment_check = (
             supabase_client.table("appointments")
-            .select("id, customer_id")
+            .select("id, customer_id, service_id")
             .eq("id", invoice_data.appointment_id)
             .eq("salon_id", salon_id)
             .execute()
@@ -119,6 +119,27 @@ async def create_invoice(invoice_data: InvoiceCreate, ctx: UserContext = Depends
             raise HTTPException(status_code=400, detail="Appointment not found")
         if appointment_check.data[0]["customer_id"] != invoice_data.customer_id:
             raise HTTPException(status_code=400, detail="Appointment does not belong to this customer")
+
+        service_id = appointment_check.data[0].get("service_id")
+        if not service_id:
+            raise HTTPException(status_code=400, detail="Appointment has no service price")
+
+        service_check = (
+            supabase_client.table("services")
+            .select("name, price")
+            .eq("id", service_id)
+            .eq("salon_id", salon_id)
+            .execute()
+        )
+        if not service_check.data:
+            raise HTTPException(status_code=400, detail="Appointment service not found")
+
+        service = service_check.data[0]
+        invoice_data.items = [
+            InvoiceItemCreate(description=service["name"], quantity=1, unit_price=service["price"])
+        ]
+        invoice_data.subtotal = service["price"]
+        invoice_data.total = max(0, invoice_data.subtotal - invoice_data.discount + invoice_data.tax)
 
     invoice_number = await generate_invoice_number(salon_id)
 

@@ -29,6 +29,7 @@ export default function NewInvoicePage() {
   // ✅ Get pre-filled data from URL
   const appointmentId = searchParams?.get('appointment_id') || ''
   const customerId = searchParams?.get('customer_id') || ''
+  const isAppointmentInvoice = Boolean(appointmentId)
   
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
@@ -94,10 +95,11 @@ export default function NewInvoicePage() {
           }
           
           // ✅ Auto-fill service as first item
-          const title = aptRes.data.title || 'Service'
+          const title = aptRes.data.service_name || aptRes.data.title || 'Service'
+          const price = aptRes.data.service_price ?? 0
           setFormData(prev => ({
             ...prev,
-            items: [{ description: title, quantity: 1, unit_price: 0 }]
+            items: [{ description: title, quantity: 1, unit_price: price }]
           }))
         } catch (e) {
           // Appointment not found / not linked - fine, the form just
@@ -339,10 +341,12 @@ export default function NewInvoicePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Invoice Items</CardTitle>
-            <Button type="button" variant="outline" onClick={addItem}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
+            {!isAppointmentInvoice && (
+              <Button type="button" variant="outline" onClick={addItem}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Item
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             {formData.items.map((item, index) => (
@@ -353,6 +357,7 @@ export default function NewInvoicePage() {
                     placeholder="Service or product"
                     value={item.description}
                     onChange={(e) => updateItem(index, 'description', e.target.value)}
+                    disabled={isAppointmentInvoice}
                     required
                   />
                 </div>
@@ -363,6 +368,7 @@ export default function NewInvoicePage() {
                     min="1"
                     value={item.quantity}
                     onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                    disabled={isAppointmentInvoice}
                     required
                   />
                 </div>
@@ -373,6 +379,8 @@ export default function NewInvoicePage() {
                     min="0"
                     value={item.unit_price}
                     onChange={(e) => updateItem(index, 'unit_price', parseInt(e.target.value) || 0)}
+                    disabled={isAppointmentInvoice}
+                    className={isAppointmentInvoice ? 'bg-stone-50' : undefined}
                     required
                   />
                 </div>
@@ -380,16 +388,18 @@ export default function NewInvoicePage() {
                   <p className="text-sm font-medium">Rs. {item.quantity * item.unit_price}</p>
                 </div>
                 <div className="col-span-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeItem(index)}
-                    className="text-red-500 hover:text-red-700"
-                    disabled={formData.items.length <= 1}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {!isAppointmentInvoice && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeItem(index)}
+                      className="text-red-500 hover:text-red-700"
+                      disabled={formData.items.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

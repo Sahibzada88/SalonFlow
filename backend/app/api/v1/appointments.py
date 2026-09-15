@@ -387,6 +387,17 @@ async def get_appointment(appointment_id: str, ctx: UserContext = Depends(get_cu
             # RPC above returns the whole salon's list internally.
             if ctx.role == "customer" and apt.get("customer_id") != ctx.customer_id:
                 raise HTTPException(status_code=404, detail="Appointment not found")
+            if apt.get("service_id"):
+                service = (
+                    supabase_client.table("services")
+                    .select("name, price")
+                    .eq("id", apt["service_id"])
+                    .eq("salon_id", ctx.salon_id)
+                    .execute()
+                )
+                if service.data:
+                    apt["service_name"] = service.data[0]["name"]
+                    apt["service_price"] = service.data[0]["price"]
             return apt
 
     raise HTTPException(status_code=404, detail="Appointment not found")
