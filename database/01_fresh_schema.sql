@@ -454,7 +454,7 @@ declare v_result jsonb;
 begin
     select coalesce(jsonb_agg(jsonb_build_object(
         'id', a.id, 'customer_id', a.customer_id, 'customer_name', coalesce(c.full_name, 'Unknown'),
-        'service_id', a.service_id, 'service_name', coalesce(s.name, ''),
+        'service_id', a.service_id, 'service_name', coalesce(s.name, ''), 'service_price', s.price,
         'title', coalesce(a.title, 'Service'), 'date', a.date,
         'start_time', left(a.start_time::text, 5), 'end_time', left(a.end_time::text, 5),
         'status', a.status, 'notes', a.notes, 'created_at', a.created_at,
@@ -815,7 +815,16 @@ create policy "feedback_select_own" on public.feedback for select using (auth.ui
 create policy "feedback_insert_own" on public.feedback for insert with check (auth.uid() = customer_id);
 
 -- ============================================================
--- Supabase's reserved service_role already bypasses RLS by default.
--- It cannot be altered from the SQL editor, so no role mutation is
--- needed here.
+-- NOTE ON service_role and RLS bypass
 -- ============================================================
+-- `service_role` is a reserved Supabase role - only Supabase's own
+-- superuser can modify it, so `ALTER ROLE service_role BYPASSRLS;`
+-- (an earlier version of this script tried that) fails with
+-- "42501: service_role is a reserved role, only superusers can
+-- modify it". It's also unnecessary: service_role bypasses RLS by
+-- default on every Supabase project, no configuration needed. If a
+-- service-role request is ever unexpectedly blocked by RLS, the
+-- real cause is almost always that the request wasn't actually sent
+-- with the service-role key/session (see backend
+-- app/core/supabase_client.py's note on not reusing one Supabase
+-- client for both auth sessions and service-role queries).

@@ -10,8 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Trash2, UserCog, AlertCircle, Copy, Check, Mail, User } from 'lucide-react'
-import { api } from '@/services/api'
+import { Plus, Trash2, Edit, UserCog, AlertCircle, Copy, Check, Mail, User } from 'lucide-react'
+import { api, staffApi } from '@/services/api'
 
 export default function StaffManagementPage() {
   const router = useRouter()
@@ -30,6 +30,11 @@ export default function StaffManagementPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [newStaffCredentials, setNewStaffCredentials] = useState<{ email: string; username: string; password: string } | null>(null)
   const [copied, setCopied] = useState(false)
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingStaff, setEditingStaff] = useState<any | null>(null)
+  const [editForm, setEditForm] = useState({ position: '', phone: '', is_active: true })
+  const [savingEdit, setSavingEdit] = useState(false)
 
   useEffect(() => {
     // ✅ Check if user is owner
@@ -121,6 +126,30 @@ export default function StaffManagementPage() {
     setTimeout(() => setCopied(false), 3000)
   }
 
+  const openEditStaff = (s: any) => {
+    setEditingStaff(s)
+    setEditForm({
+      position: s.position || '',
+      phone: s.phone || '',
+      is_active: s.is_active,
+    })
+    setEditDialogOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingStaff) return
+    setSavingEdit(true)
+    try {
+      await staffApi.update(editingStaff.id, editForm)
+      setEditDialogOpen(false)
+      fetchStaff()
+    } catch (err) {
+      alert('Failed to update staff')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -182,7 +211,7 @@ export default function StaffManagementPage() {
                   </div>
                 </div>
                 <p className="text-xs text-stone-500 mt-2">
-                  Staff will receive an email to confirm their account.
+                  Share this password with them directly - it's shown only once and no email is sent.
                 </p>
               </div>
             )}
@@ -218,7 +247,7 @@ export default function StaffManagementPage() {
                     required
                   />
                 </div>
-                <p className="text-xs text-stone-400">Confirmation email will be sent here</p>
+                <p className="text-xs text-stone-400">Used for their login - no email is sent automatically</p>
               </div>
 
               <div>
@@ -311,11 +340,18 @@ export default function StaffManagementPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className="bg-green-100 text-green-800">
+                      <Badge className={s.is_active ? 'bg-green-100 text-green-800' : 'bg-stone-100 text-stone-600'}>
                         {s.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditStaff(s)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="sm"
@@ -332,6 +368,50 @@ export default function StaffManagementPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Staff Member</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Position</Label>
+              <select
+                className="w-full px-3 py-2 border rounded-md bg-background"
+                value={editForm.position}
+                onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
+              >
+                <option value="Receptionist">Receptionist</option>
+                <option value="Stylist">Stylist</option>
+                <option value="Manager">Manager</option>
+                <option value="Assistant">Assistant</option>
+                <option value="Barber">Barber</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input
+                placeholder="03XX-XXXXXXX"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={editForm.is_active}
+                onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+              />
+              Active (inactive staff cannot log in)
+            </label>
+            <Button className="w-full" onClick={handleSaveEdit} disabled={savingEdit}>
+              {savingEdit ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

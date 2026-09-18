@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -16,20 +16,31 @@ import {
   Trash2,
   Calendar,
   Clock,
-  User
+  User,
+  Lock
 } from 'lucide-react'
 import { billingApi } from '@/services/api'
 import { customersApi } from '@/services/api'
 import { appointmentsApi } from '@/services/api'
 
+// FIXED: useSearchParams() needs a Suspense boundary above it or
+// `next build`'s static prerendering fails for this route - the actual
+// form is split out below and wrapped here.
 export default function NewInvoicePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-8"><p className="text-muted-foreground">Loading...</p></div>}>
+      <NewInvoiceForm />
+    </Suspense>
+  )
+}
+
+function NewInvoiceForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  // ✅ Get pre-filled data from URL
+  // Get pre-filled data from URL
   const appointmentId = searchParams?.get('appointment_id') || ''
   const customerId = searchParams?.get('customer_id') || ''
-  const isAppointmentInvoice = Boolean(appointmentId)
   
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
@@ -38,6 +49,11 @@ export default function NewInvoicePage() {
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
   const [appointment, setAppointment] = useState<any>(null)
   const [appointmentsByCustomer, setAppointmentsByCustomer] = useState([])
+  // When true, the appointment has a known service with a fixed price -
+  // the item row is locked (read-only) and only discount/tax stay
+  // editable, since the owner already set the service's price when they
+  // created it in the services catalog.
+  const [priceLocked, setPriceLocked] = useState(false)
   const [formData, setFormData] = useState({
     customer_id: customerId || '',
     appointment_id: appointmentId || '',
@@ -64,12 +80,12 @@ export default function NewInvoicePage() {
       const customersRes = await customersApi.getAll()
       setCustomers(customersRes.data || [])
       
-      // ✅ If customer_id provided, fetch customer details
+      // If customer_id provided, fetch customer details
       if (customerId) {
         const customerRes = await customersApi.getOne(customerId)
         setSelectedCustomer(customerRes.data)
         
-        // ✅ Fetch appointments for this customer
+        // Fetch appointments for this customer
         try {
           const aptRes = await appointmentsApi.getByCustomer(customerId)
           setAppointmentsByCustomer(aptRes.data || [])
@@ -78,13 +94,13 @@ export default function NewInvoicePage() {
         }
       }
       
-      // ✅ If appointment_id provided, fetch and pre-fill
+      // If appointment_id provided, fetch and pre-fill
       if (appointmentId) {
         try {
           const aptRes = await appointmentsApi.getOne(appointmentId)
           setAppointment(aptRes.data)
           
-          // ✅ Auto-fill date from appointment
+          // Auto-fill date from appointment
           if (aptRes.data.date) {
             setFormData(prev => ({ 
               ...prev, 
@@ -94,13 +110,23 @@ export default function NewInvoicePage() {
             }))
           }
           
-          // ✅ Auto-fill service as first item
-          const title = aptRes.data.service_name || aptRes.data.title || 'Service'
-          const price = aptRes.data.service_price ?? 0
+          // FIXED: the service's price is already set by the owner in the
+          // services catalog - it used to always come through as 0 here,
+          // requiring it to be re-typed by hand every time. Now it's
+          // pulled from the appointment's linked service and the item row
+          // is locked, since that price shouldn't be freely editable per
+          // invoice (the backend enforces this too - see billing.py).
+          const title = aptRes.data.title || aptRes.data.service_name || 'Service'
+          const hasServicePrice = aptRes.data.service_id && aptRes.data.service_price != null
           setFormData(prev => ({
             ...prev,
-            items: [{ description: title, quantity: 1, unit_price: price }]
+            items: [{
+              description: aptRes.data.service_name || title,
+              quantity: 1,
+              unit_price: hasServicePrice ? aptRes.data.service_price : 0,
+            }]
           }))
+          setPriceLocked(!!hasServicePrice)
         } catch (e) {
           // Appointment not found / not linked - fine, the form just
           // starts blank instead of pre-filled.
@@ -341,7 +367,7 @@ export default function NewInvoicePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Invoice Items</CardTitle>
-            {!isAppointmentInvoice && (
+            {!priceLocked && (
               <Button type="button" variant="outline" onClick={addItem}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Item
@@ -349,6 +375,12 @@ export default function NewInvoicePage() {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
+            {priceLocked && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5 -mt-1 mb-2">
+                <Lock className="h-3 w-3" />
+                Price is set by the service catalog and can't be changed here - only discount and tax below are editable.
+              </p>
+            )}
             {formData.items.map((item, index) => (
               <div key={index} className="grid grid-cols-12 gap-3 items-end border-b pb-4 last:border-0">
                 <div className="col-span-5 space-y-1">
@@ -357,7 +389,7 @@ export default function NewInvoicePage() {
                     placeholder="Service or product"
                     value={item.description}
                     onChange={(e) => updateItem(index, 'description', e.target.value)}
-                    disabled={isAppointmentInvoice}
+                    disabled={priceLocked}
                     required
                   />
                 </div>
@@ -368,7 +400,7 @@ export default function NewInvoicePage() {
                     min="1"
                     value={item.quantity}
                     onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                    disabled={isAppointmentInvoice}
+                    disabled={priceLocked}
                     required
                   />
                 </div>
@@ -379,8 +411,7 @@ export default function NewInvoicePage() {
                     min="0"
                     value={item.unit_price}
                     onChange={(e) => updateItem(index, 'unit_price', parseInt(e.target.value) || 0)}
-                    disabled={isAppointmentInvoice}
-                    className={isAppointmentInvoice ? 'bg-stone-50' : undefined}
+                    disabled={priceLocked}
                     required
                   />
                 </div>
@@ -388,7 +419,7 @@ export default function NewInvoicePage() {
                   <p className="text-sm font-medium">Rs. {item.quantity * item.unit_price}</p>
                 </div>
                 <div className="col-span-1">
-                  {!isAppointmentInvoice && (
+                  {!priceLocked && (
                     <Button
                       type="button"
                       variant="ghost"

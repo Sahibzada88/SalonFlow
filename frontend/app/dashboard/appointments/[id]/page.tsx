@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,20 +24,27 @@ import {
 import { appointmentsApi } from '@/services/api'
 
 export default function AppointmentDetailPage() {
+  // FIXED: params is a Promise in newer Next.js (App Router) and
+  // must be unwrapped via useParams() in a client component rather
+  // than destructured directly as a prop - destructuring it
+  // synchronously threw 'params should be unwrapped with React.use()'
+  // at runtime.
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
-  const { id: appointmentId } = useParams<{ id: string }>()
   const [appointment, setAppointment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   useEffect(() => {
-    if (appointmentId) {
+    if (id) {
       fetchAppointment()
     }
-  }, [appointmentId])
+  }, [id])
 
   const fetchAppointment = async () => {
     try {
-      const response = await appointmentsApi.getOne(appointmentId)
+      const response = await appointmentsApi.getOne(id)
       setAppointment(response.data)
     } catch (error) {
       router.push('/dashboard/appointments')
@@ -46,11 +53,25 @@ export default function AppointmentDetailPage() {
     }
   }
 
+  // Change status right here instead of having to go to the edit page
+  // just to change one field.
+  const handleStatusChange = async (newStatus: string) => {
+    setUpdatingStatus(true)
+    try {
+      await appointmentsApi.updateStatus(id, newStatus)
+      setAppointment((prev: any) => ({ ...prev, status: newStatus }))
+    } catch (error) {
+      alert('Failed to update status')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this appointment?')) return
     
     try {
-      await appointmentsApi.delete(appointmentId)
+      await appointmentsApi.delete(id)
       router.push('/dashboard/appointments')
     } catch (error) {
       alert('Failed to delete appointment')
@@ -134,7 +155,7 @@ export default function AppointmentDetailPage() {
           </Link>
           <h1 className="text-3xl font-bold text-stone-900">Appointment Details</h1>
           <div className="ml-auto flex gap-2">
-            <Link href={`/dashboard/appointments/${appointmentId}/edit`}>
+            <Link href={`/dashboard/appointments/${id}/edit`}>
               <Button variant="outline">
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
@@ -165,6 +186,20 @@ export default function AppointmentDetailPage() {
               <div>
                 <p className="text-sm text-stone-500">Status</p>
                 {getStatusBadge(appointment.status)}
+                <select
+                  className="mt-1 block w-full text-sm border rounded px-2 py-1.5 bg-background disabled:opacity-50"
+                  value={appointment.status}
+                  disabled={updatingStatus}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  title="Change status"
+                >
+                  <option value="requested">Pending Approval</option>
+                  <option value="approved">Approved</option>
+                  <option value="rescheduled_pending">Reschedule Pending</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="no-show">No Show</option>
+                </select>
               </div>
               <div>
                 <p className="text-sm text-stone-500">Date</p>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,14 @@ import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { customersApi } from '@/services/api'
 
 // Important: This is how params should be received in Next.js App Router
-export default function EditCustomerPage({ params }: { params: { id: string } }) {
+export default function EditCustomerPage() {
+  // FIXED: params is a Promise in newer Next.js (App Router) and
+  // must be unwrapped via useParams() in a client component rather
+  // than destructured directly as a prop - destructuring it
+  // synchronously threw 'params should be unwrapped with React.use()'
+  // at runtime.
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -27,14 +34,14 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
   })
 
   useEffect(() => {
-    if (params?.id) {
+    if (id) {
       fetchCustomer()
     }
-  }, [params?.id])
+  }, [id])
 
   const fetchCustomer = async () => {
     try {
-      const response = await customersApi.getOne(params.id)
+      const response = await customersApi.getOne(id)
       const data = response.data
       setFormData({
         full_name: data.full_name || '',
@@ -57,8 +64,8 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
     setError('')
 
     try {
-      await customersApi.update(params.id, formData)
-      router.push(`/dashboard/customers/${params.id}`)
+      await customersApi.update(id, formData)
+      router.push(`/dashboard/customers/${id}`)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update customer')
     } finally {
@@ -77,7 +84,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
-        <Link href={`/dashboard/customers/${params.id}`}>
+        <Link href={`/dashboard/customers/${id}`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -156,7 +163,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
               >
                 {loading ? 'Updating...' : 'Update Customer'}
               </Button>
-              <Link href={`/dashboard/customers/${params.id}`}>
+              <Link href={`/dashboard/customers/${id}`}>
                 <Button variant="outline">Cancel</Button>
               </Link>
             </div>

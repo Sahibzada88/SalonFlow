@@ -233,6 +233,49 @@
     position/permissions/phone/active-status - previously only create and
     delete existed.
 
+## Addendum 8: session-contamination bug, CORS crash, invoice price locking
+
+26. **Fixed a real bug where `register_customer()`/`login()`'s own
+    Supabase Auth calls (`sign_up()`, `sign_in_with_password()`) were made
+    on the same module-level `supabase_client` singleton used for every
+    service-role table/RPC query.** supabase-py updates a client's
+    Authorization header to the resulting session's access token after
+    either call - so immediately after signup, that shared client started
+    sending the new customer's token instead of the service-role key,
+    and the very next line's `public.users`/`public.customers` inserts
+    were rejected by RLS. This is what caused the "works for owner, not
+    for this customer" and "RLS violation on register" symptoms chased in
+    earlier addenda - the schema/role fixes were real and worth keeping,
+    but this was the actual root cause. Fixed via a new
+    `get_auth_client()` in `supabase_client.py` that returns a fresh,
+    throwaway client for every sign_up/sign_in call, never reusing the
+    shared service-role singleton (see the comments there for why a fresh
+    client per call, not just a second shared one, is the correct fix).
+
+27. **Fixed a startup crash**: `CORS_ALLOWED_ORIGINS` was typed
+    `List[str]`, which makes pydantic-settings try to JSON-decode the raw
+    `.env` value before any of our own parsing runs - a plain
+    comma-separated value like `http://localhost:3000,http://127.0.0.1:3000`
+    crashed the app at import time with `SettingsError: error parsing
+    value for field "CORS_ALLOWED_ORIGINS"`. Fixed by keeping the setting
+    as a plain `str` and exposing a `cors_allowed_origins` property that
+    splits it - `main.py` updated to use the property.
+
+28. **Invoice price locking**: `POST /billing/invoices` now looks up the
+    linked appointment's service price fresh from the `services` table
+    and uses it to build the invoice's line item itself, ignoring
+    whatever price the request body submitted - only when
+    `appointment_id` is provided and that appointment has a service
+    attached. Services are owner-set, so their price shouldn't be
+    something a client-side request can quietly override; discount and
+    tax remain freely editable per invoice as before. A manual invoice
+    with no appointment (or an appointment with no service) still uses
+    the submitted items unchanged.
+
+29. **Added `DELETE /appointments/{id}`** (owner/staff only) - this route
+    didn't exist at all; the frontend's delete button called an endpoint
+    that had never been implemented.
+
 ## Known limitation this backend change does NOT fix
 
 Row Level Security is no longer purely decorative - `database/01_fresh_schema.sql`

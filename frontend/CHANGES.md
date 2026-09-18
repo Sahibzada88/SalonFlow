@@ -164,6 +164,66 @@
     to match the new backend `PUT /staff/{id}` endpoint (previously only
     create/delete existed on the frontend side).
 
+24. **`app/dashboard/staff/page.tsx`**: added the missing Edit action
+    (position, phone, active/inactive) using the new `staffApi.update()` -
+    only create and delete existed before. Also fixed the status badge,
+    which was hardcoded green regardless of `is_active` (only the text
+    label changed, not the color) - it now reflects inactive staff
+    visually too. Removed copy claiming a confirmation email is sent to
+    new staff, which isn't true (the backend auto-confirms staff accounts
+    and never emails the temporary password - it's shown once in the
+    dialog for the owner to share directly).
+
+## Next.js 15/16 compatibility + more feature fixes
+
+25. **Fixed `params` Promise errors** on every dynamic `[id]` route
+    (`dashboard/appointments/[id]`, `.../edit`, `dashboard/customers/[id]`,
+    `.../edit`, `dashboard/billing/[id]`) - newer Next.js makes route
+    `params` a Promise, so destructuring it directly as
+    `{ params }: { params: { id: string } }` and reading `params.id`
+    throws "params should be unwrapped with React.use()" at runtime. All
+    five now use `useParams()` from `next/navigation` instead.
+
+26. **Added the missing `appointmentsApi.delete()`** - the appointment
+    detail page's delete button called a method that didn't exist on the
+    frontend API client (and, as it turned out, didn't exist on the
+    backend either - see backend `CHANGES.md` #29).
+
+27. **Fixed a production build failure**: both `app/auth/login-customer/page.tsx`
+    and `app/dashboard/billing/new/page.tsx` call `useSearchParams()`
+    without a `<Suspense>` boundary anywhere above them, which
+    `next build`'s static prerendering rejects outright. Both are now
+    split into a thin wrapper that renders the real form inside
+    `<Suspense>`.
+
+28. **Invoice creation now pulls the service's price automatically** when
+    opened from an approved appointment (`?appointment_id=...`), instead
+    of always starting at 0 and having to be typed in by hand every time.
+    The line item (description/quantity/price) is locked read-only in
+    that case - matching the backend enforcement in `CHANGES.md` #28 -
+    with a small note explaining why; only discount and tax stay
+    editable. A manually-started invoice (no appointment) is unaffected
+    and still fully editable.
+
+29. **Appointment status can now be changed without opening the edit
+    page**: both the appointments list (`dashboard/appointments/page.tsx`)
+    and the detail page now have an inline status dropdown next to the
+    status badge that calls `PATCH /appointments/{id}/status` directly.
+    The quick Approve/Reject buttons for pending requests are unchanged
+    (they still redirect into invoice creation on approve) - the dropdown
+    covers every other transition (e.g. approved → completed) that
+    previously required navigating to `/edit` just to change one field.
+
+30. **Fixed a self-reference bug introduced by #25's own automated fix**:
+    the `useParams()` migration script that fixed all five `[id]` routes
+    ran its "replace every `params.id` with `id`" step *after* inserting
+    the line `const id = params.id as string` - so that same replacement
+    also matched its own just-inserted line, turning it into
+    `const id = id as string` (a `ReferenceError: Cannot access 'id'
+    before initialization` at runtime on every one of those five pages).
+    Fixed by restoring `params.id` on that one declaration line in each
+    file; every other `id` reference in those files was already correct.
+
 ## Known limitations
 
 `app/auth/resend-confirmation/page.tsx` calls

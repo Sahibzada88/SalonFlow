@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,8 +24,14 @@ import { appointmentsApi } from '@/services/api'
 import { customersApi } from '@/services/api'
 
 export default function EditAppointmentPage() {
+  // FIXED: params is a Promise in newer Next.js (App Router) and
+  // must be unwrapped via useParams() in a client component rather
+  // than destructured directly as a prop - destructuring it
+  // synchronously threw 'params should be unwrapped with React.use()'
+  // at runtime.
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
-  const { id: appointmentId } = useParams<{ id: string }>()
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
@@ -41,10 +47,10 @@ export default function EditAppointmentPage() {
   })
 
   useEffect(() => {
-    if (appointmentId) {
+    if (id) {
       fetchData()
     }
-  }, [appointmentId])
+  }, [id])
 
   const fetchData = async () => {
     try {
@@ -53,7 +59,7 @@ export default function EditAppointmentPage() {
       setCustomers(customersRes.data)
 
       // Fetch appointment
-      const aptRes = await appointmentsApi.getOne(appointmentId)
+      const aptRes = await appointmentsApi.getOne(id)
       const apt = aptRes.data
       setFormData({
         customer_id: apt.customer_id || '',
@@ -77,8 +83,8 @@ export default function EditAppointmentPage() {
     setError('')
 
     try {
-      await appointmentsApi.update(appointmentId, formData)
-      router.push(`/dashboard/appointments/${appointmentId}`)
+      await appointmentsApi.update(id, formData)
+      router.push(`/dashboard/appointments/${id}`)
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to update appointment')
     } finally {
@@ -131,7 +137,7 @@ export default function EditAppointmentPage() {
       {/* Main Content */}
       <div className="ml-64 flex-1 p-8 max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <Link href={`/dashboard/appointments/${appointmentId}`}>
+          <Link href={`/dashboard/appointments/${id}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -240,7 +246,7 @@ export default function EditAppointmentPage() {
                 >
                   {loading ? 'Updating...' : 'Update Appointment'}
                 </Button>
-                <Link href={`/dashboard/appointments/${appointmentId}`}>
+                <Link href={`/dashboard/appointments/${id}`}>
                   <Button variant="outline">Cancel</Button>
                 </Link>
               </div>

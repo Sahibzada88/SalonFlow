@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,20 +10,27 @@ import { ArrowLeft, Mail, Phone, MapPin, Edit, Calendar, DollarSign } from 'luci
 import { customersApi } from '@/services/api'
 
 // Important: This is how params should be received in Next.js App Router
-export default function CustomerDetailPage({ params }: { params: { id: string } }) {
+export default function CustomerDetailPage() {
+  // FIXED: params is a Promise in newer Next.js (App Router) and
+  // must be unwrapped via useParams() in a client component rather
+  // than destructured directly as a prop - destructuring it
+  // synchronously threw 'params should be unwrapped with React.use()'
+  // at runtime.
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const [customer, setCustomer] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (params?.id) {
+    if (id) {
       fetchCustomer()
     }
-  }, [params?.id])
+  }, [id])
 
   const fetchCustomer = async () => {
     try {
-      const response = await customersApi.getOne(params.id)
+      const response = await customersApi.getOne(id)
       setCustomer(response.data)
     } catch (error) {
       console.error('Error fetching customer:', error)

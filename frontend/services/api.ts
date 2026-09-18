@@ -77,6 +77,8 @@ export const appointmentsApi = {
     api.post('/appointments', data),
   update: (id: string, data: any) =>
     api.put(`/appointments/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/appointments/${id}`),
   updateStatus: (id: string, status: string) =>
     api.patch(`/appointments/${id}/status`, null, { params: { status } }),
   approve: (id: string, data?: { new_date?: string; new_time?: string; reason?: string }) =>
@@ -91,9 +93,6 @@ export const appointmentsApi = {
     api.get('/appointments/notifications'),
   markNotificationRead: (id: string) =>
     api.patch(`/appointments/notifications/${id}/read`),
-  delete: (id: string) =>
-    api.delete(`/api/v1/appointments/${id}`),
-
 }
 
 export const billingApi = {

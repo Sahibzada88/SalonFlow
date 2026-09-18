@@ -1,28 +1,14 @@
 import os
-from typing import Annotated, List
+from typing import Optional, List
 
 from dotenv import load_dotenv
-from pydantic import field_validator
-from pydantic_settings import BaseSettings, NoDecode
+from pydantic_settings import BaseSettings
 
 load_dotenv()
 
 
 def _split_csv(value: str) -> List[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
-
-
-def _cors_origins() -> List[str]:
-    configured = _split_csv(
-        os.getenv(
-            "CORS_ALLOWED_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000",
-        )
-    )
-    deployed_frontend = "https://salon-flow-frontend.vercel.app"
-    if deployed_frontend not in configured:
-        configured.append(deployed_frontend)
-    return configured
 
 
 _DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
@@ -60,17 +46,24 @@ class Settings(BaseSettings):
 
     # CORS - comma-separated list of allowed origins, e.g.
     # "https://app.example.com,https://staging.example.com"
-    # Defaults cover local dev and the deployed frontend. NEVER "*" with credentials.
-    CORS_ALLOWED_ORIGINS: Annotated[List[str], NoDecode] = _cors_origins()
+    # Defaults to localhost for local dev only. NEVER "*" with credentials.
+    #
+    # NOTE: this is intentionally typed `str`, not `List[str]`. pydantic-
+    # settings tries to JSON-decode any env var bound to a List[...]-typed
+    # field before our own parsing ever runs - so a plain comma-separated
+    # value like "http://localhost:3000,http://127.0.0.1:3000" crashes the
+    # app at startup with `SettingsError: error parsing value for field
+    # "CORS_ALLOWED_ORIGINS"` (a real bug hit in practice). Keeping the raw
+    # env var as a string and splitting it ourselves in the
+    # cors_allowed_origins property below avoids pydantic's automatic
+    # complex-type decoding entirely.
+    CORS_ALLOWED_ORIGINS: str = os.getenv(
+        "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    )
 
-    @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, value: str | List[str]) -> List[str]:
-        origins = _split_csv(value) if isinstance(value, str) else list(value)
-        deployed_frontend = "https://salon-flow-frontend.vercel.app"
-        if deployed_frontend not in origins:
-            origins.append(deployed_frontend)
-        return origins
+    @property
+    def cors_allowed_origins(self) -> List[str]:
+        return _split_csv(self.CORS_ALLOWED_ORIGINS)
 
     # ---- Session cookie (replaces returning the token in the JSON body) ----
     # The access token is now set as an httpOnly cookie, so client-side JS

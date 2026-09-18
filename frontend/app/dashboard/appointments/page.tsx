@@ -131,6 +131,23 @@ export default function AppointmentsPage() {
     }
   }
 
+  // Change status directly from the list, without navigating to the edit
+  // page - this used to require opening /edit just to change a status.
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    setUpdatingStatusId(id)
+    try {
+      await appointmentsApi.updateStatus(id, newStatus)
+      setAppointments((prev: any) =>
+        prev.map((apt: any) => (apt.id === id ? { ...apt, status: newStatus } : apt))
+      )
+    } catch (error) {
+      alert('Failed to update status')
+    } finally {
+      setUpdatingStatusId(null)
+    }
+  }
+
   const filteredAppointments = appointments.filter((apt: any) => {
     if (filter !== 'all' && apt.status !== filter) return false
     if (customerFilter && apt.customer_id !== customerFilter) return false
@@ -271,7 +288,23 @@ export default function AppointmentsPage() {
                       {apt.service_name || apt.title || '-'}
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      {getStatusBadge(apt.status)}
+                      <div className="space-y-1">
+                        {getStatusBadge(apt.status)}
+                        <select
+                          className="block w-full text-xs border rounded px-1.5 py-1 bg-background disabled:opacity-50"
+                          value={apt.status}
+                          disabled={updatingStatusId === apt.id}
+                          onChange={(e) => handleStatusChange(apt.id, e.target.value)}
+                          title="Change status"
+                        >
+                          <option value="requested">Pending Approval</option>
+                          <option value="approved">Approved</option>
+                          <option value="rescheduled_pending">Reschedule Pending</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                          <option value="no-show">No Show</option>
+                        </select>
+                      </div>
                     </TableCell>
                     <TableCell className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">

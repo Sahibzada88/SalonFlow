@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import { authApi } from '@/services/api'
 import { AuthShell } from '@/components/auth/AuthShell'
+
+// FIXED: useSearchParams() requires a Suspense boundary somewhere above it
+// in the tree - without one, `next build`'s static prerendering fails for
+// this route. The actual form is split into CustomerLoginForm below and
+// wrapped in <Suspense> here so only the part that reads the query string
+// opts out of static rendering, not the whole page.
+export default function CustomerLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <CustomerLoginForm />
+    </Suspense>
+  )
+}
 
 function CustomerLoginForm() {
   const router = useRouter()
@@ -116,13 +129,5 @@ function CustomerLoginForm() {
         </Button>
       </form>
     </AuthShell>
-  )
-}
-
-export default function CustomerLoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-      <CustomerLoginForm />
-    </Suspense>
   )
 }

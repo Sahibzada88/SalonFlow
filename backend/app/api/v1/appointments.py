@@ -366,6 +366,27 @@ async def update_appointment_status(appointment_id: str, status: str, ctx: UserC
     return {"message": f"Status updated to {status}", "appointment": result.data}
 
 
+@router.delete("/{appointment_id}")
+async def delete_appointment(appointment_id: str, ctx: UserContext = Depends(_staff_or_owner)):
+    """Owner/staff only. This route was entirely missing before - the
+    frontend's delete button on the appointment detail page called
+    appointmentsApi.delete(), which didn't exist on either side."""
+    if not ctx.salon_id:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    result = (
+        supabase_client.table("appointments")
+        .delete()
+        .eq("id", appointment_id)
+        .eq("salon_id", ctx.salon_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    return {"message": "Appointment deleted successfully"}
+
+
 @router.get("/{appointment_id}")
 async def get_appointment(appointment_id: str, ctx: UserContext = Depends(get_current_user)):
     if not ctx.salon_id:
@@ -387,17 +408,6 @@ async def get_appointment(appointment_id: str, ctx: UserContext = Depends(get_cu
             # RPC above returns the whole salon's list internally.
             if ctx.role == "customer" and apt.get("customer_id") != ctx.customer_id:
                 raise HTTPException(status_code=404, detail="Appointment not found")
-            if apt.get("service_id"):
-                service = (
-                    supabase_client.table("services")
-                    .select("name, price")
-                    .eq("id", apt["service_id"])
-                    .eq("salon_id", ctx.salon_id)
-                    .execute()
-                )
-                if service.data:
-                    apt["service_name"] = service.data[0]["name"]
-                    apt["service_price"] = service.data[0]["price"]
             return apt
 
     raise HTTPException(status_code=404, detail="Appointment not found")

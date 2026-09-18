@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,8 +22,14 @@ import {
 import { billingApi } from '@/services/api'
 
 export default function InvoiceDetailPage() {
+  // FIXED: params is a Promise in newer Next.js (App Router) and
+  // must be unwrapped via useParams() in a client component rather
+  // than destructured directly as a prop - destructuring it
+  // synchronously threw 'params should be unwrapped with React.use()'
+  // at runtime.
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
-  const { id: invoiceId } = useParams<{ id: string }>()
   const [invoice, setInvoice] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
@@ -32,14 +38,14 @@ export default function InvoiceDetailPage() {
   const [submittingPayment, setSubmittingPayment] = useState(false)
 
   useEffect(() => {
-    if (invoiceId) {
+    if (id) {
       fetchInvoice()
     }
-  }, [invoiceId])
+  }, [id])
 
   const fetchInvoice = async () => {
     try {
-      const response = await billingApi.getOne(invoiceId)
+      const response = await billingApi.getOne(id)
       setInvoice(response.data)
     } catch (error) {
       router.push('/dashboard/billing')
@@ -51,7 +57,7 @@ export default function InvoiceDetailPage() {
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this invoice?')) return
     try {
-      await billingApi.delete(invoiceId)
+      await billingApi.delete(id)
       router.push('/dashboard/billing')
     } catch (error) {
       alert('Failed to delete invoice')
@@ -60,7 +66,7 @@ export default function InvoiceDetailPage() {
 
   const handleDownloadPDF = async () => {
     try {
-      const response = await billingApi.downloadPDF(invoiceId)
+      const response = await billingApi.downloadPDF(id)
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
@@ -75,7 +81,7 @@ export default function InvoiceDetailPage() {
 
   const handlePrint = async () => {
     try {
-      const response = await billingApi.printPDF(invoiceId)
+      const response = await billingApi.printPDF(id)
       const blob = new Blob([response.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       window.open(url, '_blank')
@@ -96,7 +102,7 @@ export default function InvoiceDetailPage() {
     }
     setSubmittingPayment(true)
     try {
-      await billingApi.addPayment(invoiceId, {
+      await billingApi.addPayment(id, {
         amount: amount,
         payment_method: paymentMethod,
         payment_date: new Date().toISOString().split('T')[0]

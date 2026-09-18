@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 
-from app.core.supabase_client import supabase_auth_client, supabase_client
+from app.core.supabase_client import supabase_client, get_auth_client
 from app.core.auth_deps import get_current_user, require_roles, UserContext
 from app.core.logging_config import get_logger
 from app.core.config import settings
@@ -161,7 +161,15 @@ async def register_customer(user_data: UserCreate):
         raise HTTPException(status_code=400, detail="This salon hasn't finished setting up yet")
 
     try:
-        auth_response = supabase_auth_client.auth.sign_up(
+        # CRITICAL: must use a fresh get_auth_client() here, never the
+        # shared service-role `supabase_client` - see the warning in
+        # supabase_client.py. Using the shared client here was a real bug:
+        # this call would silently switch that client's Authorization
+        # header to the new customer's session token, so the
+        # `public.users`/`public.customers` inserts a few lines below
+        # (which need service-role privileges to bypass RLS) would start
+        # running as that customer instead and get rejected by RLS.
+        auth_response = get_auth_client().auth.sign_up(
             {
                 "email": user_data.email,
                 "password": user_data.password,
@@ -288,7 +296,9 @@ async def create_staff(staff_data: StaffCreate, ctx: UserContext = Depends(requi
         )
     except Exception as e:
         logger.warning("Admin create_user failed, falling back to sign_up: %s", e)
-        auth_response = supabase_auth_client.auth.sign_up(
+        # Same contamination risk as register_customer() above - fresh
+        # client only, never the shared service-role one.
+        auth_response = get_auth_client().auth.sign_up(
             {
                 "email": staff_data.email,
                 "password": temp_password,
@@ -384,7 +394,9 @@ async def login(request: Request, response: Response, form_data: OAuth2PasswordR
         raise HTTPException(status_code=401, detail="Account is deactivated")
 
     try:
-        auth_response = supabase_auth_client.auth.sign_in_with_password(
+        # Fresh client, not the shared service-role one - same
+        # contamination concern as register_customer() above.
+        auth_response = get_auth_client().auth.sign_in_with_password(
             {"email": user_data["email"], "password": password}
         )
     except Exception:
